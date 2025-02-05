@@ -15,19 +15,18 @@ const title = "Sign in";
           <label for="email">Email</label>
           <input id="email" type="email" name="email" />
         </div>
-        <div>
-          <label for="password">Password</label>
-          <input id="password" type="password" name="password" />
-        </div>
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" />
         <button type="submit">Sign In</button>
-
-        <hr />
-        <p>Or with</p>
+      </form>
+      <hr />
+      <p>Or with</p>
+      <form action="/api/auth/signin" method="post">
         <button value="github" name="provider" type="submit">
-          Sign in with GitHub
+           Sign in with GitHub
         </button>
         <button value="google" name="provider" type="submit">
-          Sign in with Google
+           Sign in with Google
         </button>
       </form>
     </section>
