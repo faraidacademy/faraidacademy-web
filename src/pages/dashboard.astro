@@ -1,20 +1,12 @@
 ---
 import Base from "../layout/Base.astro";
-import { supabase } from "../lib/supabase";
 import type { GuestbookEntry } from "../types";
 
 const { email } = Astro.locals;
 
-// Fetch data ONLY ONCE here
-const { data, error } = (await supabase
-  .from("guestbook")
-  .select("name, message")
-  .order("created_at", { ascending: false })) as { data: GuestbookEntry[], error: any };
-
-  if (error) {
-      console.log(error)
-      return new Response('Error fetching data', { status: 500});
-  }
+// Fetch guestbook entries from the API
+const response = await fetch("/api/guestbook");
+const data: GuestbookEntry[] = await response.json();
 ---
 
 <Base title="Dashboard">
@@ -22,11 +14,11 @@ const { data, error } = (await supabase
     <p>{email}</p>
     <p>This is a protected page.</p>
     <a href="/api/auth/signout">Sign out</a>
-    {data && data.map(entry => (
-        <div>
-            <h3>{entry.name}</h3>
-            <p>{entry.message}</p>
-        </div>
+    {data.map(entry => (
+      <div>
+        <h3>{entry.name}</h3>
+        <p>{entry.message}</p>
+      </div>
     ))}
   </section>
 </Base>

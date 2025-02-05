@@ -9,9 +9,10 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   if (!email || !password) {
     return new Response("Email and password are required", { status: 400 });
   }
-if (password.length < 8) {
+
+  if (password.length < 8) {
     return new Response("Password must be at least 8 characters long", { status: 400 });
-}
+  }
 
   const { error } = await supabase.auth.signUp({
     email,
@@ -19,14 +20,7 @@ if (password.length < 8) {
   });
 
   if (error) {
-    // Provide more user-friendly error messages
-    let errorMessage = "An error occurred during registration.";
-    if (error.message.includes("already registered")) {
-      errorMessage = "This email address is already registered.";
-    } else if (error.message.includes("Password")) {
-      errorMessage = "Invalid password. Please choose a stronger password.";
-    }
-    return new Response(errorMessage, { status: 500 });
+    return new Response(error.message, { status: 500 });
   }
 
   return redirect("/signin");
