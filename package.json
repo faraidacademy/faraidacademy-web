@@ -1,0 +1,24 @@
+{
+  "name": "astro-supabase",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "format": "prettier --write . --plugin=prettier-plugin-astro",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/vercel": "^6.1.0",
+    "@supabase/supabase-js": "^2.39.1",
+    "astro": "^4.0.7",
+    "micromatch": "^4.0.5"
+  },
+  "devDependencies": {
+    "@types/micromatch": "^4.0.6",
+    "prettier": "^3.1.1",
+    "prettier-plugin-astro": "^0.12.2"
+  }
+}
