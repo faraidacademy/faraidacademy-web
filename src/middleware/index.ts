@@ -1,6 +1,8 @@
+// src/middleware/index.ts
 import { defineMiddleware } from "astro:middleware";
 import { supabase } from "../lib/supabase";
 import micromatch from "micromatch";
+import { setAuthCookies, deleteAuthCookies, verifySupabaseSession } from "../lib/helpers";
 
 const protectedRoutes = ["/dashboard(|/)"];
 const redirectRoutes = ["/signin(|/)", "/register(|/)"];
@@ -16,32 +18,15 @@ export const onRequest = defineMiddleware(
         return redirect("/signin");
       }
 
-      const { data, error } = await supabase.auth.setSession({
-        refresh_token: refreshToken.value,
-        access_token: accessToken.value,
-      });
+      const { data, error } = await verifySupabaseSession(supabase, accessToken.value, refreshToken.value)
 
       if (error) {
-        cookies.delete("sb-access-token", {
-          path: "/",
-        });
-        cookies.delete("sb-refresh-token", {
-          path: "/",
-        });
+        deleteAuthCookies(cookies)
         return redirect("/signin");
       }
 
       locals.email = data.user?.email!;
-      cookies.set("sb-access-token", data?.session?.access_token!, {
-        sameSite: "strict",
-        path: "/",
-        secure: true,
-      });
-      cookies.set("sb-refresh-token", data?.session?.refresh_token!, {
-        sameSite: "strict",
-        path: "/",
-        secure: true,
-      });
+      setAuthCookies(cookies, data?.session?.access_token!, data?.session?.refresh_token!)
     }
 
     if (micromatch.isMatch(url.pathname, redirectRoutes)) {
@@ -68,10 +53,7 @@ export const onRequest = defineMiddleware(
       }
 
       // Verify the tokens
-      const { error } = await supabase.auth.setSession({
-        access_token: accessToken.value,
-        refresh_token: refreshToken.value,
-      });
+      const { error } = await verifySupabaseSession(supabase, accessToken.value, refreshToken.value)
 
       if (error) {
         return new Response(

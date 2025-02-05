@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
+import { deleteAuthCookies } from "../../../lib/helpers";
 
 export const GET: APIRoute = async ({ cookies, redirect }) => {
-  cookies.delete("sb-access-token", { path: "/" });
-  cookies.delete("sb-refresh-token", { path: "/" });
+  deleteAuthCookies(cookies)
   return redirect("/signin");
 };
