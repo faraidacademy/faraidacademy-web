@@ -1,10 +1,9 @@
-import { defineConfig } from "astro/config";
-import vercel from "@astrojs/vercel/serverless";
+import { defineConfig } from 'astro/config';
+import netlify from '@astrojs/netlify/functions';
 
-// https://astro.build/config
 export default defineConfig({
-  site: "https://astro-supabase-auth.vercel.app",
-  output: "server",
-  adapter: vercel(),
-  integrations: [],
+  output: 'server',
+  adapter: netlify({
+    edgeMiddleware: true,
+  }),
 });

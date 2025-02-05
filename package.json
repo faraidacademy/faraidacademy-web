@@ -11,9 +11,9 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/vercel": "^6.1.0",
+    "@astrojs/netlify": "^6.1.0",
     "@supabase/supabase-js": "^2.39.1",
-    "astro": "^4.0.7",
+    "astro": "^5.2.5",
     "micromatch": "^4.0.5"
   },
   "devDependencies": {
