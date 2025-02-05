@@ -1,8 +1,6 @@
-// src/pages/api/auth/signin.ts
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
 import type { Provider } from "@supabase/supabase-js";
-import { getOAuthRedirectURI, setAuthCookies } from "../../../lib/helpers";
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const formData = await request.formData();
@@ -14,7 +12,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: provider as Provider,
       options: {
-        redirectTo: getOAuthRedirectURI(),
+        redirectTo: import.meta.env.DEV
+          ? "http://localhost:4321/api/auth/callback"
+          : "https://faraidacademy.netlify.app/api/auth/callback",
       },
     });
 
@@ -22,7 +22,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       return new Response(error.message, { status: 500 });
     }
 
-    // ADDED: Reload dashboard
     return redirect(data.url);
   }
 
@@ -40,7 +39,16 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   }
 
   const { access_token, refresh_token } = data.session;
+  cookies.set("sb-access-token", access_token, {
+    sameSite: "strict",
+    path: "/",
+    secure: true,
+  });
+  cookies.set("sb-refresh-token", refresh_token, {
+    sameSite: "strict",
+    path: "/",
+    secure: true,
+  });
 
-  setAuthCookies(cookies, access_token, refresh_token)
   return redirect("/dashboard");
 };

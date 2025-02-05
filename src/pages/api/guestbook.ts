@@ -1,6 +1,5 @@
 import type { APIRoute } from "astro";
 import { supabase } from "../../lib/supabase";
-import { createErrorResponse } from "../../lib/helpers";
 
 export const GET: APIRoute = async () => {
   const { data, error } = await supabase
@@ -8,9 +7,14 @@ export const GET: APIRoute = async () => {
     .select("*")
     .order("created_at", { ascending: true });
 
-    if (error) {
-      return createErrorResponse(error.message, 500);
-    }
+  if (error) {
+    return new Response(
+      JSON.stringify({
+        error: error.message,
+      }),
+      { status: 500 },
+    );
+  }
   
   return new Response(JSON.stringify(data));
 };
@@ -22,9 +26,14 @@ export const POST: APIRoute = async ({ request }) => {
     .insert({ name, message })
     .select();
 
-    if (error) {
-      return createErrorResponse(error.message, 500);
-    }
+  if (error) {
+    return new Response(
+      JSON.stringify({
+        error: error.message,
+      }),
+      { status: 500 },
+    );
+  }
 
   return new Response(JSON.stringify(data));
 };

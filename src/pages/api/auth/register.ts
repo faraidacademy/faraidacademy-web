@@ -1,6 +1,5 @@
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
-import { createErrorResponse } from "../../../lib/helpers";
 
 export const POST: APIRoute = async ({ request, redirect }) => {
   const formData = await request.formData();
@@ -10,9 +9,9 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   if (!email || !password) {
     return new Response("Email and password are required", { status: 400 });
   }
-  if (password.length < 8) {
+if (password.length < 8) {
     return new Response("Password must be at least 8 characters long", { status: 400 });
-  }
+}
 
   const { error } = await supabase.auth.signUp({
     email,
@@ -27,7 +26,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     } else if (error.message.includes("Password")) {
       errorMessage = "Invalid password. Please choose a stronger password.";
     }
-    return createErrorResponse(errorMessage, 500);
+    return new Response(errorMessage, { status: 500 });
   }
 
   return redirect("/signin");
