@@ -1,3 +1,4 @@
+// src/pages/api/auth/callback.ts
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
 import { setAuthCookies } from "../../../lib/helpers";
@@ -17,7 +18,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
 
   const { access_token, refresh_token } = data.session;
 
-  setAuthCookies(cookies, access_token, refresh_token)
-
+  setAuthCookies(cookies, access_token, refresh_token);
+  // ADDED: Reload dashboard
   return redirect("/dashboard");
 };
