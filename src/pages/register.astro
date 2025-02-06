@@ -1,5 +1,7 @@
 ---
+// src/pages/register.astro
 import Base from "../layout/Base.astro";
+import AuthForm from "../components/AuthForm.astro"; // Import
 const title = "Register";
 ---
 
@@ -10,17 +12,7 @@ const title = "Register";
       <p>
         Already have an account? <a href="/signin">Sign in</a>
       </p>
-      <form action="/api/auth/register" method="post">
-        <div>
-          <label for="email">Email</label>
-          <input id="email" type="email" name="email" />
-        </div>
-        <div>
-          <label for="password">Password</label>
-          <input id="password" type="password" name="password" />
-        </div>
-        <button type="submit">Register</button>
-      </form>
+      <AuthForm action="/api/auth/register" submitText="Register" />
     </section>
   </main>
 </Base>

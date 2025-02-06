@@ -1,6 +1,12 @@
+// src/pages/api/auth/signin.ts
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
-import type { Provider } from "@supabase/supabase-js";
+import type { Provider, AuthError } from "@supabase/supabase-js";
+import { setAuthCookies } from "../../../lib/auth"; // Import
+
+function handleAuthError(error: AuthError) {
+    return new Response(error.message, { status: 500 });
+}
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const formData = await request.formData();
@@ -19,7 +25,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     });
 
     if (error) {
-      return new Response(error.message, { status: 500 });
+      return handleAuthError(error);
     }
 
     return redirect(data.url);
@@ -35,20 +41,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   });
 
   if (error) {
-    return new Response(error.message, { status: 500 });
+     return handleAuthError(error)
   }
 
   const { access_token, refresh_token } = data.session;
-  cookies.set("sb-access-token", access_token, {
-    sameSite: "strict",
-    path: "/",
-    secure: true,
-  });
-  cookies.set("sb-refresh-token", refresh_token, {
-    sameSite: "strict",
-    path: "/",
-    secure: true,
-  });
-
+  setAuthCookies(cookies, access_token, refresh_token); // Use helper
   return redirect("/dashboard");
 };

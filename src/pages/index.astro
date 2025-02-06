@@ -1,23 +1,11 @@
 ---
+// src/pages/index.astro (modified)
 import Base from "../layout/Base.astro";
-import { supabase } from "../lib/supabase";
+import { checkAndSetSession } from '../lib/auth'; // Import helper
 
 // Check for existing session
-const accessToken = Astro.cookies.get("sb-access-token");
-const refreshToken = Astro.cookies.get("sb-refresh-token");
+const isLoggedIn = await checkAndSetSession(Astro.cookies); // Use helper
 
-let isLoggedIn = false;
-
-if (accessToken && refreshToken) {
-  const { data } = await supabase.auth.setSession({
-    refresh_token: refreshToken.value,
-    access_token: accessToken.value,
-  });
-
-  if (data?.user) {
-    isLoggedIn = true;
-  }
-}
 ---
 
 <Base title="Home">

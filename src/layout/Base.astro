@@ -4,7 +4,15 @@ interface Props {
 }
 
 const { title } = Astro.props;
+import '@fontsource-variable/open-sans';
 ---
+
+<style is:global>
+  body {
+    font-family: "Open Sans", sans-serif;
+    font-size: 1rem;
+  }
+</style>
 
 <html lang="en">
   <head>
