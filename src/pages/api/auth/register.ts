@@ -29,11 +29,16 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   const { error } = await supabase.auth.signUp({
     email,
     password,
+    options: { // Add the options object
+      emailRedirectTo: import.meta.env.DEV
+        ? "http://localhost:4321/signin?message=confirm-email" // Redirect to signin page with a query parameter
+        : "https://faraidacademy.netlify.app/signin?message=confirm-email", // For production, adjust the URL
+    },
   });
 
   if (error) {
     return handleAuthError(error);
   }
 
-  return redirect("/signin");
+  return redirect("/signin?message=confirm-email"); // Redirect to signin, passing a success message
 };

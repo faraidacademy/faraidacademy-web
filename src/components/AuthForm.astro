@@ -1,14 +1,14 @@
 ---
-// src/components/AuthForm.astro (NEW FILE)
+// src/components/AuthForm.astro
 interface Props {
   action: string;
   submitText: string;
-  showProviderButtons?: boolean; // Optional prop
+  showProviderButtons?: boolean;
 }
 
-const { action, submitText, showProviderButtons = false } = Astro.props; // Default value
-
+const { action, submitText, showProviderButtons = false } = Astro.props;
 ---
+
 <form action={action} method="post">
   <div>
     <label for="email">Email</label>
@@ -20,17 +20,16 @@ const { action, submitText, showProviderButtons = false } = Astro.props; // Defa
   </div>
   <button type="submit">{submitText}</button>
 </form>
-{showProviderButtons && (
-  <>
-    <hr />
-    <p>Or with</p>
-    <form action="/api/auth/signin" method="post">
-      <button value="github" name="provider" type="submit">
-         Sign in with GitHub
-      </button>
-      <button value="google" name="provider" type="submit">
-         Sign in with Google
-      </button>
-    </form>
-  </>
-)}
+{
+  showProviderButtons && (
+    <>
+      <hr />
+      <p>Or with</p>
+      <form action="/api/auth/signin" method="post">
+        <button value="google" name="provider" type="submit">
+          Sign in with Google
+        </button>
+      </form>
+    </>
+  )
+}
