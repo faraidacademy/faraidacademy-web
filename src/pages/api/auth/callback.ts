@@ -1,3 +1,4 @@
+// src/pages/api/auth/callback.ts
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
 
@@ -26,5 +27,10 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
     secure: true,
     httpOnly: true,
   });
-  return redirect("/dashboard");
+
+  // Create a new URL object for the /dashboard page
+  const redirectUrl = new URL('/dashboard', url.origin);
+
+  // Redirect to the cleaned URL
+  return redirect(redirectUrl.toString());
 };
