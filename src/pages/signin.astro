@@ -1,24 +1,16 @@
 ---
-// src/pages/signin.astro (modified)
+// src/pages/signin.astro
 import Base from "../layout/Base.astro";
 import AuthForm from "../components/AuthForm.astro";
 const title = "Sign in";
 
-const url = new URL(Astro.request.url);
-const message = url.searchParams.get("message");
 ---
 
 <Base title={title}>
   <main>
     <section>
       <h1>{title}</h1>
-      <p>
-        New to demo? <a href="/register">Create an account</a>
-      </p>
-      {message === "confirm-email" && (
-        <p style="color: green;">Please check your email to confirm your account.</p>
-      )}
-      <AuthForm action="/api/auth/signin" submitText="Sign In" showProviderButtons />
+      <AuthForm showProviderButtons />
     </section>
   </main>
 </Base>

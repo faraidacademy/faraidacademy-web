@@ -1,95 +1,38 @@
 ---
 
-`src\pages\api\auth\signout.ts`:
+`src\pages\api\auth\callback.ts`:
 ```
-// src/pages/api/auth/signout.ts
-import type { APIRoute } from "astro";
-import { clearAuthCookies } from "../../../lib/auth"; // Import
-
-export const GET: APIRoute = async ({ cookies, redirect }) => {
-  clearAuthCookies(cookies); // Use helper
-  return redirect("/signin");
-};
-```
-
----
-
-`src\pages\register.astro`:
-```
----
-// src/pages/register.astro
-import Base from "../layout/Base.astro";
-import AuthForm from "../components/AuthForm.astro"; // Import
-const title = "Register";
----
-
-<Base title={title}>
-  <main>
-    <section>
-      <h1>{title}</h1>
-      <p>
-        Already have an account? <a href="/signin">Sign in</a>
-      </p>
-      <AuthForm action="/api/auth/register" submitText="Register" />
-    </section>
-  </main>
-</Base>
-```
-
----
-
-`src\pages\api\auth\signin.ts`:
-```
-// src/pages/api/auth/signin.ts
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
-import type { Provider, AuthError } from "@supabase/supabase-js";
-import { setAuthCookies } from "../../../lib/auth"; // Import
 
-function handleAuthError(error: AuthError) {
-    return new Response(error.message, { status: 500 });
-}
+export const GET: APIRoute = async ({ url, cookies, redirect }) => {
+  const authCode = url.searchParams.get("code");
 
-export const POST: APIRoute = async ({ request, cookies, redirect }) => {
-  const formData = await request.formData();
-  const email = formData.get("email")?.toString();
-  const password = formData.get("password")?.toString();
-  const provider = formData.get("provider")?.toString();
-
-  if (provider) {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: provider as Provider,
-      options: {
-        redirectTo: import.meta.env.DEV
-          ? "http://localhost:4321/api/auth/callback"
-          : "https://faraidacademy.netlify.app/api/auth/callback",
-      },
-    });
-
-    if (error) {
-      return handleAuthError(error);
-    }
-
-    return redirect(data.url);
+  if (!authCode) {
+    return new Response("No code provided", { status: 400 });
   }
 
-  if (!email || !password) {
-    return new Response("Email and password are required", { status: 400 });
-  }
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
 
   if (error) {
-     return handleAuthError(error)
+    return new Response(error.message, { status: 500 });
   }
 
   const { access_token, refresh_token } = data.session;
-  setAuthCookies(cookies, access_token, refresh_token); // Use helper
+
+  cookies.set("sb-access-token", access_token, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+  cookies.set("sb-refresh-token", refresh_token, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
   return redirect("/dashboard");
 };
+
 ```
 
 ---
@@ -127,59 +70,33 @@ import '@fontsource-variable/open-sans';
 
 ---
 
-`src\lib\supabase.ts`:
+`src\types.ts`:
 ```
-import { createClient } from "@supabase/supabase-js";
-
-export const supabase = createClient(
-  import.meta.env.SUPABASE_URL,
-  import.meta.env.SUPABASE_ANON_KEY,
-  {
-    auth: {
-      flowType: "pkce",
-      autoRefreshToken: true,
-      detectSessionInUrl: false,
-      persistSession: true,
-    },
-  },
-);
-```
-
----
-
-`astro.config.mjs`:
-```
-import { defineConfig } from 'astro/config';
-import netlify from '@astrojs/netlify';
-
-export default defineConfig({
-  output: 'server',
-  adapter: netlify({
-    edgeMiddleware: false,
-  }),
-});
-```
-
----
-
-`.env`:
-```
-SUPABASE_URL=https://nbytvsctrjknlbemdfwe.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ieXR2c2N0cmprbmxiZW1kZndlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzMTA5MTgsImV4cCI6MjA1Mzg4NjkxOH0.llpjzwUPxba4pU_egjpDuVdX3K4Gtw9wPes82zCgTjI
-```
-
----
-
-`tsconfig.json`:
-```
-{
-  "extends": "astro/tsconfigs/strictest",
-  "compilerOptions": {
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js"
+// src/types.ts
+export interface GuestbookEntry {
+    name: string;
+    message: string;
   }
-}
+```
 
+---
+
+`src\pages\dashboard.astro`:
+```
+---
+// src/pages/dashboard.astro
+import Base from "../layout/Base.astro";
+
+const { email } = Astro.locals;
+---
+
+<Base title="Dashboard">
+  <section>
+    <p>{email}</p>
+    <p>This is a protected page.</p>
+    <a href="/api/auth/signout">Sign out</a>
+  </section>
+</Base>
 ```
 
 ---
@@ -187,12 +104,11 @@ SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 `src\pages\index.astro`:
 ```
 ---
-// src/pages/index.astro (modified)
+// src/pages/index.astro
 import Base from "../layout/Base.astro";
-import { checkAndSetSession } from '../lib/auth'; // Import helper
+import { checkAndSetSession } from '../lib/auth';
 
-// Check for existing session
-const isLoggedIn = await checkAndSetSession(Astro.cookies); // Use helper
+const isLoggedIn = await checkAndSetSession(Astro.cookies);
 
 ---
 
@@ -205,62 +121,23 @@ const isLoggedIn = await checkAndSetSession(Astro.cookies); // Use helper
       </p>
     ) : (
       <p>
-        <a href="/signin">Sign in</a> or <a href="/register">Register</a> to
-        access the dashboard.
+        <a href="/signin">Sign in</a> to access the dashboard.
       </p>
     )
   }
 </Base>
-```
-
 ---
 
-`src\pages\api\auth\register.ts`:
+`src\env.d.ts`:
 ```
-// src/pages/api/auth/register.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
-import { AuthError } from "@supabase/supabase-js";
-
-// Helper for auth errors
-function handleAuthError(error: AuthError) {
-    let errorMessage = "An error occurred during registration.";
-    if (error.message.includes("already registered")) {
-      errorMessage = "This email address is already registered.";
-    } else if (error.message.includes("Password")) {
-      errorMessage = "Invalid password. Please choose a stronger password.";
-    }
-    return new Response(errorMessage, { status: 500 });
+// src/env.d.ts
+/// <reference path="../.astro/types.d.ts" />
+/// <reference types="astro/client" />
+declare namespace App {
+  interface Locals {
+    email: string;
+  }
 }
-
-export const POST: APIRoute = async ({ request, redirect }) => {
-  const formData = await request.formData();
-  const email = formData.get("email")?.toString();
-  const password = formData.get("password")?.toString();
-
-  if (!email || !password) {
-    return new Response("Email and password are required", { status: 400 });
-  }
-  if (password.length < 8) {
-    return new Response("Password must be at least 8 characters long", { status: 400 });
-  }
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { // Add the options object
-      emailRedirectTo: import.meta.env.DEV
-        ? "http://localhost:4321/signin?message=confirm-email" // Redirect to signin page with a query parameter
-        : "https://faraidacademy.netlify.app/signin?message=confirm-email", // For production, adjust the URL
-    },
-  });
-
-  if (error) {
-    return handleAuthError(error);
-  }
-
-  return redirect("/signin?message=confirm-email"); // Redirect to signin, passing a success message
-};
 ```
 
 ---
@@ -326,53 +203,86 @@ export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Loc
 
 ---
 
-`src\env.d.ts`:
+`src\pages\api\auth\signout.ts`:
 ```
-// src/env.d.ts
-/// <reference path="../.astro/types.d.ts" />
-/// <reference types="astro/client" />
-declare namespace App {
-  interface Locals {
-    email: string;
-  }
-}
+// src/pages/api/auth/signout.ts
+import type { APIRoute } from "astro";
+import { clearAuthCookies } from "../../../lib/auth"; // Import
+
+export const GET: APIRoute = async ({ cookies, redirect }) => {
+  clearAuthCookies(cookies); // Use helper
+  return redirect("/signin");
+};
 ```
 
 ---
 
-`src\pages\api\auth\callback.ts`:
+`src\pages\api\auth\register.ts`:
 ```
+// src/pages/api/auth/register.ts
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
+import { AuthError } from "@supabase/supabase-js";
 
-export const GET: APIRoute = async ({ url, cookies, redirect }) => {
-  const authCode = url.searchParams.get("code");
+// Helper for auth errors
+function handleAuthError(error: AuthError) {
+    let errorMessage = "An error occurred during registration.";
+    if (error.message.includes("already registered")) {
+      errorMessage = "This email address is already registered.";
+    } else if (error.message.includes("Password")) {
+      errorMessage = "Invalid password. Please choose a stronger password.";
+    }
+    return new Response(errorMessage, { status: 500 });
+}
 
-  if (!authCode) {
-    return new Response("No code provided", { status: 400 });
+export const POST: APIRoute = async ({ request, redirect }) => {
+  const formData = await request.formData();
+  const email = formData.get("email")?.toString();
+  const password = formData.get("password")?.toString();
+
+  if (!email || !password) {
+    return new Response("Email and password are required", { status: 400 });
+  }
+  if (password.length < 8) {
+    return new Response("Password must be at least 8 characters long", { status: 400 });
   }
 
-  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { // Add the options object
+      emailRedirectTo: import.meta.env.DEV
+        ? "http://localhost:4321/signin?message=confirm-email" // Redirect to signin page with a query parameter
+        : "https://faraidacademy.netlify.app/signin?message=confirm-email", // For production, adjust the URL
+    },
+  });
 
   if (error) {
-    return new Response(error.message, { status: 500 });
+    return handleAuthError(error);
   }
 
-  const { access_token, refresh_token } = data.session;
-
-  cookies.set("sb-access-token", access_token, {
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-  cookies.set("sb-refresh-token", refresh_token, {
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-  return redirect("/dashboard");
+  return redirect("/signin?message=confirm-email"); // Redirect to signin, passing a success message
 };
+```
 
+---
+
+`src\lib\supabase.ts`:
+```
+import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  import.meta.env.SUPABASE_URL,
+  import.meta.env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      flowType: "pkce",
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      persistSession: true,
+    },
+  },
+);
 ```
 
 ---
@@ -442,35 +352,102 @@ export const onRequest = defineMiddleware(
 
 ---
 
+`src\pages\api\guestbook.ts`:
+```
+// src/pages/api/guestbook.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../lib/supabase";
+import type { PostgrestError } from "@supabase/supabase-js";
+
+// Helper function to handle Supabase errors
+function handleSupabaseError(error: PostgrestError) {
+  return new Response(
+    JSON.stringify({
+      error: error.message,
+    }),
+    { status: 500 },
+  );
+}
+
+export const GET: APIRoute = async () => {
+  const { data, error } = await supabase
+    .from("guestbook")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    return handleSupabaseError(error); // Use the helper
+  }
+
+  return new Response(JSON.stringify(data));
+};
+
+export const POST: APIRoute = async ({ request }) => {
+  const { name, message } = await request.json();
+  const { data, error } = await supabase
+    .from("guestbook")
+    .insert({ name, message })
+    .select();
+
+  if (error) {
+    return handleSupabaseError(error); // Use the helper
+  }
+
+  return new Response(JSON.stringify(data));
+};
+```
+
+---
+
+`src\pages\api\auth\signin.ts`:
+```
+// src/pages/api/auth/signin.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../../lib/supabase";
+import type { Provider } from "@supabase/supabase-js";
+
+export const POST: APIRoute = async ({ request, redirect }) => {
+  const formData = await request.formData();
+  const provider = formData.get("provider")?.toString();
+
+  if (provider) {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: provider as Provider,
+      options: {
+        redirectTo: import.meta.env.DEV
+          ? "http://localhost:4321/api/auth/callback"
+          : "https://faraidacademy.netlify.app/api/auth/callback",
+      },
+    });
+
+    if (error) {
+      return new Response(error.message, { status: 500 });
+    }
+
+    return redirect(data.url);
+  }
+
+  return new Response("Provider required", { status: 400 });
+};
+```
+
+---
+
 `src\components\AuthForm.astro`:
 ```
 ---
 // src/components/AuthForm.astro
 interface Props {
-  action: string;
-  submitText: string;
   showProviderButtons?: boolean;
 }
 
-const { action, submitText, showProviderButtons = false } = Astro.props;
+const { showProviderButtons = false } = Astro.props;
 ---
 
-<form action={action} method="post">
-  <div>
-    <label for="email">Email</label>
-    <input id="email" type="email" name="email" required />
-  </div>
-  <div>
-    <label for="password">Password</label>
-    <input id="password" type="password" name="password" required />
-  </div>
-  <button type="submit">{submitText}</button>
-</form>
 {
   showProviderButtons && (
     <>
-      <hr />
-      <p>Or with</p>
+      <p>Sign in with</p>
       <form action="/api/auth/signin" method="post">
         <button value="google" name="provider" type="submit">
           Sign in with Google
@@ -479,37 +456,27 @@ const { action, submitText, showProviderButtons = false } = Astro.props;
     </>
   )
 }
-
 ```
 
 ---
 
-`src\types.ts`:
-```
-// src/types.ts
-export interface GuestbookEntry {
-    name: string;
-    message: string;
-  }
-```
-
----
-
-`src\pages\dashboard.astro`:
+`src\pages\signin.astro`:
 ```
 ---
-// src/pages/dashboard.astro
+// src/pages/signin.astro
 import Base from "../layout/Base.astro";
+import AuthForm from "../components/AuthForm.astro";
+const title = "Sign in";
 
-const { email } = Astro.locals;
 ---
 
-<Base title="Dashboard">
-  <section>
-    <p>{email}</p>
-    <p>This is a protected page.</p>
-    <a href="/api/auth/signout">Sign out</a>
-  </section>
+<Base title={title}>
+  <main>
+    <section>
+      <h1>{title}</h1>
+      <AuthForm showProviderButtons />
+    </section>
+  </main>
 </Base>
 ```
 

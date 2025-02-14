@@ -1,13 +1,12 @@
 ---
-// src/pages/dashboard.astro
 import Base from "../layout/Base.astro";
 
-const { email } = Astro.locals;
+const { userId } = Astro.locals;
 ---
 
 <Base title="Dashboard">
   <section>
-    <p>{email}</p>
+    <p>User ID: {userId}</p>
     <p>This is a protected page.</p>
     <a href="/api/auth/signout">Sign out</a>
   </section>

@@ -1,30 +1,16 @@
 ---
 // src/components/AuthForm.astro
 interface Props {
-  action: string;
-  submitText: string;
   showProviderButtons?: boolean;
 }
 
-const { action, submitText, showProviderButtons = false } = Astro.props;
+const { showProviderButtons = false } = Astro.props;
 ---
 
-<form action={action} method="post">
-  <div>
-    <label for="email">Email</label>
-    <input id="email" type="email" name="email" required />
-  </div>
-  <div>
-    <label for="password">Password</label>
-    <input id="password" type="password" name="password" required />
-  </div>
-  <button type="submit">{submitText}</button>
-</form>
 {
   showProviderButtons && (
     <>
-      <hr />
-      <p>Or with</p>
+      <p>Sign in with</p>
       <form action="/api/auth/signin" method="post">
         <button value="google" name="provider" type="submit">
           Sign in with Google

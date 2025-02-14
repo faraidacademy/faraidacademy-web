@@ -1,4 +1,4 @@
-// src/lib/auth.ts (CORRECTED)
+// src/lib/auth.ts
 import type { AstroCookies } from "astro";
 import { supabase } from "./supabase";
 
@@ -26,7 +26,7 @@ export function clearAuthCookies(cookies: AstroCookies) {
   cookies.delete("sb-refresh-token", { path: "/" });
 }
 
-export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Locals) { // Use App.Locals
+export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Locals) {
   const accessToken = cookies.get("sb-access-token");
   const refreshToken = cookies.get("sb-refresh-token");
 
@@ -45,7 +45,7 @@ export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Loc
   }
 
   if (locals) {
-    locals.email = data.user?.email ?? "";  // Use optional chaining and nullish coalescing
+    locals.userId = data.user?.id ?? "";
   }
 
   if (data?.session?.access_token && data?.session?.refresh_token) {
