@@ -3,6 +3,8 @@
 /// <reference types="astro/client" />
 declare namespace App {
   interface Locals {
-    userId: string;
+    email: string;
+    name: string; // Add name
+    avatar_url: string; // Add avatar_url
   }
 }

@@ -1,12 +1,15 @@
 ---
+// src/pages/dashboard.astro
+import { Image } from 'astro:assets';  // Import
 import Base from "../layout/Base.astro";
 
-const { userId } = Astro.locals;
+const { email, name, avatar_url } = Astro.locals;
 ---
 
 <Base title="Dashboard">
   <section>
-    <p>User ID: {userId}</p>
+    {avatar_url && <Image src={avatar_url} alt={name ? `${name}'s avatar` : "User Avatar"} width={64} height={64} />}
+    <p>Welcome, {name || email}!</p>
     <p>This is a protected page.</p>
     <a href="/api/auth/signout">Sign out</a>
   </section>

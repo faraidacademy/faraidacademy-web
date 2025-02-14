@@ -44,12 +44,15 @@ export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Loc
     return false;
   }
 
-  if (locals) {
-    locals.userId = data.user?.id ?? "";
+  if (locals && data.user) {
+    locals.email = data.user.email ?? "";
+    locals.name = data.user.user_metadata?.name ?? "";
+    locals.avatar_url = data.user.user_metadata?.avatar_url ?? "";
   }
 
   if (data?.session?.access_token && data?.session?.refresh_token) {
-    setAuthCookies(cookies, data.session.access_token, data.session.refresh_token);
+      setAuthCookies(cookies, data.session.access_token, data.session.refresh_token);
   }
+
   return true;
 }
