@@ -1,0 +1,139 @@
+---
+// src/pages/competition/[id].astro
+import Base from "../../layout/Base.astro";
+import { supabase } from "../../lib/supabase";
+import type { Question, Answer } from "../../types";
+
+const { id } = Astro.params;
+
+if (!id || isNaN(Number(id))) {
+    return Astro.redirect("/competition");
+}
+
+const questionId = Number(id);
+
+const { data: questionData, error: questionError } = await supabase
+    .from("questions")
+    .select("*")
+    .eq("id", questionId)
+    .single();
+
+if (questionError) {
+    console.error(questionError);
+    return new Response("Error fetching question", { status: 500 });
+}
+
+if (!questionData) {
+    return Astro.redirect("/competition");
+}
+
+const { data: answersData, error: answersError } = await supabase
+    .from("answers")
+    .select("*")
+    .eq("question_id", questionId);
+
+if (answersError) {
+    console.error(answersError);
+    return new Response("Error fetching answers", { status: 500 });
+}
+
+const question: Question = questionData;
+const answers: Answer[] = answersData || []; // Keep the answers array
+
+const { count: totalQuestions, error: countError } = await supabase
+    .from("questions")
+    .select("*", { count: "exact", head: true });
+
+if (countError) {
+    console.error(countError);
+    return new Response("Error fetching total questions number", {
+        status: 500,
+    });
+}
+
+const totalQuestionCount = totalQuestions ?? 0;
+
+---
+
+<Base title={`Question ${questionId}`}>
+    <section>
+        <h1>Question {questionId}</h1>
+        <p>Case: {question.case}</p>
+        {question.money && <p>Money: {question.money}</p>}
+        <p>{question.question}</p>
+        {question.fraction && <p>Fraction: {question.fraction}</p>}
+
+        <h2>Answers</h2>
+        <ul>
+            {
+                answers.map((answer) => (
+                    <li>
+                        <button
+                            data-answer-id={answer.id}
+                            class="answer-button"
+                        >
+                            {answer.answer}
+                        </button>
+                    </li>
+                ))
+            }
+            <li>
+                <button data-answer-id="null" class="answer-button">
+                    None of the Above
+                </button>
+            </li>
+        </ul>
+
+        <div class="navigation">
+            {
+                questionId > 1 && (
+                    <a href={`/competition/${questionId - 1}`}>Previous</a>
+                )
+            }
+            <span>Question: {questionId} / {totalQuestionCount}</span>
+            {
+                questionId < totalQuestionCount && (
+                    <a href={`/competition/${questionId + 1}`}>Next</a>
+                )
+            }
+        </div>
+    </section>
+</Base>
+
+<script>
+    const answerButtons =
+        document.querySelectorAll<HTMLElement>(".answer-button");
+
+    answerButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            answerButtons.forEach((b) => b.classList.remove("selected"));
+            button.classList.add("selected");
+
+            const answerId = button.dataset.answerId;
+            console.log("Answer ID:", answerId === 'null' ? null : parseInt(answerId!));
+        });
+    });
+</script>
+
+<style>
+    .navigation {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 2rem;
+    }
+
+    .answer-button {
+        margin-bottom: 0.5rem;
+        padding: 0.5rem 1rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background-color: #f0f0f0;
+        cursor: pointer;
+    }
+
+    .answer-button.selected {
+        background-color: #a0c4ff;
+        border-color: #68a0ff;
+        color: black;
+    }
+</style>
