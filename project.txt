@@ -1,5 +1,28 @@
 ---
 
+`src\pages\dashboard.astro`:
+```
+---
+// src/pages/dashboard.astro
+import { Image } from 'astro:assets';
+import Base from "../layout/Base.astro";
+
+const { email, name, avatar_url, userId } = Astro.locals; // Destructure userId
+---
+
+<Base title="Dashboard">
+  <section>
+    {avatar_url && <Image src={avatar_url} alt={name ? `${name}'s avatar` : "User Avatar"} width={64} height={64} />}
+    <p>Welcome, {name || email}!</p>
+    <p>User ID: {userId}</p> {/* Example usage - display the userId */}
+    <p>This is a protected page.</p>
+    <a href="/api/auth/signout">Sign out</a>
+  </section>
+</Base>
+```
+
+---
+
 `src\pages\api\auth\callback.ts`:
 ```
 // src/pages/api/auth/callback.ts
@@ -42,66 +65,202 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
 
 ---
 
-`src\layout\Base.astro`:
+`src\middleware\index.ts`:
 ```
+// src/middleware/index.ts
+import { defineMiddleware } from "astro:middleware";
+import micromatch from "micromatch";
+import { checkAndSetSession } from "../lib/auth";
+import { supabase } from "../lib/supabase";
+
+const protectedRoutes = ["/dashboard(|/)"];
+const redirectRoutes = ["/signin(|/)", "/register(|/)"];
+const proptectedAPIRoutes = ["/api/questions(|/)"];
+
+export const onRequest = defineMiddleware(
+  async ({ locals, url, cookies, redirect }, next) => {
+    if (micromatch.isMatch(url.pathname, protectedRoutes)) {
+        const isLoggedIn = await checkAndSetSession(cookies, locals);
+      if (!isLoggedIn) {
+        return redirect("/signin");
+      }
+    }
+
+    if (micromatch.isMatch(url.pathname, redirectRoutes)) {
+      const isLoggedIn = await checkAndSetSession(cookies);
+      if (isLoggedIn) {
+        return redirect("/dashboard");
+      }
+    }
+    if (micromatch.isMatch(url.pathname, proptectedAPIRoutes)) {
+      const accessToken = cookies.get("sb-access-token");
+      const refreshToken = cookies.get("sb-refresh-token");
+
+      if (!accessToken || !refreshToken) {
+        return new Response(
+          JSON.stringify({
+            error: "Unauthorized",
+          }),
+          { status: 401 },
+        );
+      }
+
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken.value,
+        refresh_token: refreshToken.value,
+      });
+
+      if (error) {
+        return new Response(
+          JSON.stringify({
+            error: "Unauthorized",
+          }),
+          { status: 401 },
+        );
+      }
+    }
+
+    return next();
+  },
+);
+```
+
 ---
-interface Props {
-  title: string;
+
+`src\lib\auth.ts`:
+```
+// src/lib/auth.ts
+import type { AstroCookies } from "astro";
+import { supabase } from "./supabase";
+
+export function setAuthCookies(
+  cookies: AstroCookies,
+  access_token: string,
+  refresh_token: string,
+) {
+  cookies.set("sb-access-token", access_token, {
+    sameSite: "strict",
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+  cookies.set("sb-refresh-token", refresh_token, {
+    sameSite: "strict",
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
 }
 
-const { title } = Astro.props;
-import '@fontsource-variable/open-sans';
----
+export function clearAuthCookies(cookies: AstroCookies) {
+  cookies.delete("sb-access-token", { path: "/" });
+  cookies.delete("sb-refresh-token", { path: "/" });
+}
 
-<style is:global>
-  body {
-    font-family: "Open Sans", sans-serif;
-    font-size: 1rem;
+export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Locals) {
+  const accessToken = cookies.get("sb-access-token");
+  const refreshToken = cookies.get("sb-refresh-token");
+
+  if (!accessToken || !refreshToken) {
+    return false;
   }
-</style>
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>{title}</title>
-    <meta name="viewport" content="width=device-width" />
-  </head>
-  <body>
-    <slot />
-  </body>
-</html>
+  const { data, error } = await supabase.auth.setSession({
+    refresh_token: refreshToken.value,
+    access_token: accessToken.value,
+  });
 
-```
-
----
-
-`src\types.ts`:
-```
-// src/types.ts
-export interface GuestbookEntry {
-    name: string;
-    message: string;
+  if (error) {
+    clearAuthCookies(cookies);
+    return false;
   }
+
+  if (locals && data.user) {
+    locals.email = data.user.email ?? "";
+    locals.name = data.user.user_metadata?.name ?? "";
+    locals.avatar_url = data.user.user_metadata?.avatar_url ?? "";
+    locals.userId = data.user.id;
+  }
+
+  if (data?.session?.access_token && data?.session?.refresh_token) {
+      setAuthCookies(cookies, data.session.access_token, data.session.refresh_token);
+  }
+
+  return true;
+}
 ```
 
 ---
 
-`src\pages\dashboard.astro`:
+`src\pages\api\questions.ts`:
 ```
----
-// src/pages/dashboard.astro
-import Base from "../layout/Base.astro";
+// src/pages/api/questions.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../lib/supabase";
+import type { PostgrestError } from "@supabase/supabase-js";
 
-const { email } = Astro.locals;
+function handleSupabaseError(error: PostgrestError) {
+    return new Response(
+        JSON.stringify({
+            error: error.message,
+        }),
+        { status: 500 },
+    );
+}
+
+export const GET: APIRoute = async () => {
+    const { data: questions, error: questionsError } = await supabase
+        .from("questions")
+        .select("*")
+        .order("order", { ascending: true });
+
+    if (questionsError) return handleSupabaseError(questionsError);
+
+    const { data: allAnswers, error: answersError } = await supabase
+        .from("answers")
+        .select("id, question_id, is_correct");
+
+    if (answersError) return handleSupabaseError(answersError);
+
+    const correctAnswerMap = new Map<number, number>();
+    allAnswers?.forEach((answer) => {
+        if (answer.is_correct) correctAnswerMap.set(answer.question_id, answer.id);
+    });
+
+    const questionsWithAnswers = questions.map((question) => ({
+        ...question,
+        correctAnswerId: correctAnswerMap.get(question.id) ?? null,
+    }));
+
+    return new Response(JSON.stringify(questionsWithAnswers));
+};
+
+export const POST: APIRoute = async () => {
+    return new Response(
+        JSON.stringify({ error: "Method Not Allowed" }),
+        { status: 405, headers: { "Allow": "GET" } }
+    );
+}
+```
+
 ---
 
-<Base title="Dashboard">
-  <section>
-    <p>{email}</p>
-    <p>This is a protected page.</p>
-    <a href="/api/auth/signout">Sign out</a>
-  </section>
-</Base>
+`src\lib\supabase.ts`:
+```
+import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  import.meta.env.SUPABASE_URL,
+  import.meta.env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      flowType: "pkce",
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      persistSession: true,
+    },
+  },
+);
 ```
 
 ---
@@ -131,275 +290,6 @@ const isLoggedIn = await checkAndSetSession(Astro.cookies);
     )
   }
 </Base>
----
-
-`src\env.d.ts`:
-```
-// src/env.d.ts
-/// <reference path="../.astro/types.d.ts" />
-/// <reference types="astro/client" />
-declare namespace App {
-  interface Locals {
-    email: string;
-  }
-}
-```
-
----
-
-`src\lib\auth.ts`:
-```
-// src/lib/auth.ts (CORRECTED)
-import type { AstroCookies } from "astro";
-import { supabase } from "./supabase";
-
-export function setAuthCookies(
-  cookies: AstroCookies,
-  access_token: string,
-  refresh_token: string,
-) {
-  cookies.set("sb-access-token", access_token, {
-    sameSite: "strict",
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-  cookies.set("sb-refresh-token", refresh_token, {
-    sameSite: "strict",
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-}
-
-export function clearAuthCookies(cookies: AstroCookies) {
-  cookies.delete("sb-access-token", { path: "/" });
-  cookies.delete("sb-refresh-token", { path: "/" });
-}
-
-export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Locals) { // Use App.Locals
-  const accessToken = cookies.get("sb-access-token");
-  const refreshToken = cookies.get("sb-refresh-token");
-
-  if (!accessToken || !refreshToken) {
-    return false;
-  }
-
-  const { data, error } = await supabase.auth.setSession({
-    refresh_token: refreshToken.value,
-    access_token: accessToken.value,
-  });
-
-  if (error) {
-    clearAuthCookies(cookies);
-    return false;
-  }
-
-  if (locals) {
-    locals.email = data.user?.email ?? "";  // Use optional chaining and nullish coalescing
-  }
-
-  if (data?.session?.access_token && data?.session?.refresh_token) {
-    setAuthCookies(cookies, data.session.access_token, data.session.refresh_token);
-  }
-  return true;
-}
-```
-
----
-
-`src\pages\api\auth\signout.ts`:
-```
-// src/pages/api/auth/signout.ts
-import type { APIRoute } from "astro";
-import { clearAuthCookies } from "../../../lib/auth"; // Import
-
-export const GET: APIRoute = async ({ cookies, redirect }) => {
-  clearAuthCookies(cookies); // Use helper
-  return redirect("/signin");
-};
-```
-
----
-
-`src\pages\api\auth\register.ts`:
-```
-// src/pages/api/auth/register.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
-import { AuthError } from "@supabase/supabase-js";
-
-// Helper for auth errors
-function handleAuthError(error: AuthError) {
-    let errorMessage = "An error occurred during registration.";
-    if (error.message.includes("already registered")) {
-      errorMessage = "This email address is already registered.";
-    } else if (error.message.includes("Password")) {
-      errorMessage = "Invalid password. Please choose a stronger password.";
-    }
-    return new Response(errorMessage, { status: 500 });
-}
-
-export const POST: APIRoute = async ({ request, redirect }) => {
-  const formData = await request.formData();
-  const email = formData.get("email")?.toString();
-  const password = formData.get("password")?.toString();
-
-  if (!email || !password) {
-    return new Response("Email and password are required", { status: 400 });
-  }
-  if (password.length < 8) {
-    return new Response("Password must be at least 8 characters long", { status: 400 });
-  }
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { // Add the options object
-      emailRedirectTo: import.meta.env.DEV
-        ? "http://localhost:4321/signin?message=confirm-email" // Redirect to signin page with a query parameter
-        : "https://faraidacademy.netlify.app/signin?message=confirm-email", // For production, adjust the URL
-    },
-  });
-
-  if (error) {
-    return handleAuthError(error);
-  }
-
-  return redirect("/signin?message=confirm-email"); // Redirect to signin, passing a success message
-};
-```
-
----
-
-`src\lib\supabase.ts`:
-```
-import { createClient } from "@supabase/supabase-js";
-
-export const supabase = createClient(
-  import.meta.env.SUPABASE_URL,
-  import.meta.env.SUPABASE_ANON_KEY,
-  {
-    auth: {
-      flowType: "pkce",
-      autoRefreshToken: true,
-      detectSessionInUrl: false,
-      persistSession: true,
-    },
-  },
-);
-```
-
----
-
-`src\middleware\index.ts`:
-```
-// src/middleware/index.ts
-import { defineMiddleware } from "astro:middleware";
-import micromatch from "micromatch";
-import { checkAndSetSession } from "../lib/auth"; // Import helper
-import { supabase } from "../lib/supabase";
-// ... (rest of imports) ...
-
-const protectedRoutes = ["/dashboard(|/)"];
-const redirectRoutes = ["/signin(|/)", "/register(|/)"];
-const proptectedAPIRoutes = ["/api/guestbook(|/)"];
-
-export const onRequest = defineMiddleware(
-  async ({ locals, url, cookies, redirect }, next) => {
-    if (micromatch.isMatch(url.pathname, protectedRoutes)) {
-        const isLoggedIn = await checkAndSetSession(cookies, locals); //Use helper
-      if (!isLoggedIn) {
-        return redirect("/signin");
-      }
-    }
-
-    if (micromatch.isMatch(url.pathname, redirectRoutes)) {
-      const isLoggedIn = await checkAndSetSession(cookies);  // Use helper
-      if (isLoggedIn) {
-        return redirect("/dashboard");
-      }
-    }
-    if (micromatch.isMatch(url.pathname, proptectedAPIRoutes)) {
-      const accessToken = cookies.get("sb-access-token");
-      const refreshToken = cookies.get("sb-refresh-token");
-
-      // Check for tokens
-      if (!accessToken || !refreshToken) {
-        return new Response(
-          JSON.stringify({
-            error: "Unauthorized",
-          }),
-          { status: 401 },
-        );
-      }
-
-      // Verify the tokens
-      const { error } = await supabase.auth.setSession({
-        access_token: accessToken.value,
-        refresh_token: refreshToken.value,
-      });
-
-      if (error) {
-        return new Response(
-          JSON.stringify({
-            error: "Unauthorized",
-          }),
-          { status: 401 },
-        );
-      }
-    }
-
-    return next();
-  },
-);
-```
-
----
-
-`src\pages\api\guestbook.ts`:
-```
-// src/pages/api/guestbook.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../lib/supabase";
-import type { PostgrestError } from "@supabase/supabase-js";
-
-// Helper function to handle Supabase errors
-function handleSupabaseError(error: PostgrestError) {
-  return new Response(
-    JSON.stringify({
-      error: error.message,
-    }),
-    { status: 500 },
-  );
-}
-
-export const GET: APIRoute = async () => {
-  const { data, error } = await supabase
-    .from("guestbook")
-    .select("*")
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    return handleSupabaseError(error); // Use the helper
-  }
-
-  return new Response(JSON.stringify(data));
-};
-
-export const POST: APIRoute = async ({ request }) => {
-  const { name, message } = await request.json();
-  const { data, error } = await supabase
-    .from("guestbook")
-    .insert({ name, message })
-    .select();
-
-  if (error) {
-    return handleSupabaseError(error); // Use the helper
-  }
-
-  return new Response(JSON.stringify(data));
-};
 ```
 
 ---
@@ -438,6 +328,81 @@ export const POST: APIRoute = async ({ request, redirect }) => {
 
 ---
 
+`src\types.ts`:
+```
+// src/types.ts
+export interface Question {
+  id: number;
+  question: string;
+  fraction: string | null;
+  money: number | null;
+  case: string | null;
+  type: string | null;
+  order: number | null;
+  correctAnswerId?: number | null;
+}
+
+export interface Answer {
+  id: number;
+  question_id: number;
+  answer: number;
+  is_correct: boolean;
+}
+```
+
+---
+
+`astro.config.mjs`:
+```
+import { defineConfig } from 'astro/config';
+import netlify from '@astrojs/netlify';
+
+export default defineConfig({
+  image: {
+    domains: ["googleusercontent.com"],
+  },
+  output: 'server',
+  adapter: netlify({
+    edgeMiddleware: false,
+  }),
+});
+```
+
+---
+
+`src\layout\Base.astro`:
+```
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+import '@fontsource-variable/open-sans';
+---
+
+<style is:global>
+  body {
+    font-family: "Open Sans", sans-serif;
+    font-size: 1rem;
+  }
+</style>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{title}</title>
+    <meta name="viewport" content="width=device-width" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+```
+
+---
+
 `src\components\AuthForm.astro`:
 ```
 ---
@@ -465,6 +430,20 @@ const { showProviderButtons = false } = Astro.props;
 
 ---
 
+`src\env.d.ts`:
+```
+declare namespace App {
+  interface Locals {
+    email: string;
+    name: string;
+    avatar_url: string;
+    userId: string;
+  }
+}
+```
+
+---
+
 `src\pages\signin.astro`:
 ```
 ---
@@ -483,6 +462,34 @@ const title = "Sign in";
     </section>
   </main>
 </Base>
+```
+
+---
+
+`src\pages\api\auth\signout.ts`:
+```
+// src/pages/api/auth/signout.ts
+import type { APIRoute } from "astro";
+import { clearAuthCookies } from "../../../lib/auth"; // Import
+
+export const GET: APIRoute = async ({ cookies, redirect }) => {
+  clearAuthCookies(cookies); // Use helper
+  return redirect("/signin");
+};
+```
+
+---
+
+`tsconfig.json`:
+```
+{
+  "extends": "astro/tsconfigs/strictest",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js"
+  }
+}
+
 ```
 
 ---

@@ -48,6 +48,7 @@ export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Loc
     locals.email = data.user.email ?? "";
     locals.name = data.user.user_metadata?.name ?? "";
     locals.avatar_url = data.user.user_metadata?.avatar_url ?? "";
+    locals.userId = data.user.id;
   }
 
   if (data?.session?.access_token && data?.session?.refresh_token) {
