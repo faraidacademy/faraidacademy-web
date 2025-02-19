@@ -7,7 +7,7 @@ import { supabase } from "../lib/supabase";
 
 const protectedRoutes = ["/dashboard(|/)"];
 const redirectRoutes = ["/signin(|/)", "/register(|/)"];
-const proptectedAPIRoutes = ["/api/guestbook(|/)"];
+const proptectedAPIRoutes = ["/api/questions(|/)"];
 
 export const onRequest = defineMiddleware(
   async ({ locals, url, cookies, redirect }, next) => {

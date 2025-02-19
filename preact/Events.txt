@@ -1,0 +1,17 @@
+Events
+Events are how we make applications interactive, responding to inputs like keyboard and mouse, and reacting to changes like an image loading. Events work the same way in Preact as they do in the DOM – any event type or behavior you might find on MDN can be used in Preact. As an example, here's how event handlers are typically registered using the imperative DOM API:
+
+function clicked() {
+  console.log('clicked')
+}
+const myButton = document.getElementById('my-button')
+myButton.addEventListener('click', clicked)
+Where Preact differs from the DOM API is how event handlers are registered. In Preact, event handlers are registered declaratively as props on an element, just like style and class. In general, any prop that has a name beginning with "on" is an event handler. The value of an event handler prop is the handler function to be called when that event occurs.
+
+For example, we can listen for the "click" event on a button by adding an onClick prop with our handler function as its value:
+
+function clicked() {
+  console.log('clicked')
+}
+<button onClick={clicked}>
+Event handler names are case-sensitive, like all prop names. However, Preact will detect when you're registering a standard event type on an Element (click, change, touchmove, etc), and uses the correct case behind the scenes. That's why <button onClick={..}> works even though the event is "click" (lower case).
