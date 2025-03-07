@@ -38,7 +38,7 @@ if (answersError) {
 }
 
 const question: Question = questionData;
-const answers: Answer[] = answersData || []; // Keep the answers array
+const answers: Answer[] = answersData || [];
 
 const { count: totalQuestions, error: countError } = await supabase
     .from("questions")
@@ -50,12 +50,27 @@ if (countError) {
         status: 500,
     });
 }
-
 const totalQuestionCount = totalQuestions ?? 0;
+
+let userResult = null;
+if (Astro.locals.userId) {
+  const { data: resultData, error: resultError } = await supabase
+    .from("results")
+    .select("answer_id")
+    .eq("user_id", Astro.locals.userId)
+    .eq("question_id", questionId)
+    .single();
+
+  if (resultError && resultError.code !== 'PGRST116') {
+    console.error("Error fetching user result:", resultError);
+  } else if (resultData) {
+      userResult = resultData.answer_id;
+  }
+}
 ---
 
 <Base title={`Question ${questionId}`}>
-    <section>
+    <section data-question-id={questionId}> {/* Add data-question-id here */}
         <h1>Question {questionId}</h1>
         <p>Case: {question.case}</p>
         {question.money && <p>Money: {question.money}</p>}
@@ -63,14 +78,14 @@ const totalQuestionCount = totalQuestions ?? 0;
         {question.fraction && <p>Fraction: {question.fraction}</p>}
 
         <h2>Answers</h2>
-        <p>Status: <span id="status-indicator">unsaved</span></p> {/* Status Indicator */}
+        <p>Status: <span id="status-indicator">unsaved</span></p>
         <ul>
             {
                 answers.map((answer) => (
                     <li>
                         <button
                             data-answer-id={answer.id}
-                            class="answer-button"
+                            class={`answer-button ${userResult === answer.id ? 'selected' : ''}`}
                         >
                             {answer.answer}
                         </button>
@@ -78,7 +93,7 @@ const totalQuestionCount = totalQuestions ?? 0;
                 ))
             }
             <li>
-                <button data-answer-id="null" class="answer-button">
+              <button data-answer-id="null" class={`answer-button ${userResult === null ? 'selected' : ''}`}>
                     None of the Above
                 </button>
             </li>
@@ -101,38 +116,62 @@ const totalQuestionCount = totalQuestions ?? 0;
 </Base>
 
 <script>
-    const answerButtons =
-        document.querySelectorAll<HTMLElement>(".answer-button");
+    const answerButtons = document.querySelectorAll<HTMLElement>(".answer-button");
     const statusIndicator = document.getElementById("status-indicator")!;
 
+    // Get questionId from the data attribute.  Crucially, we get it *from the section*.
+    const sectionElement = document.querySelector('section');
+    const questionId = sectionElement ? parseInt(sectionElement.dataset.questionId || '', 10) : null;
+
     answerButtons.forEach((button) => {
-        button.addEventListener("click", async () => { // Added async
+        button.addEventListener("click", async () => {
             answerButtons.forEach((b) => b.classList.remove("selected"));
             button.classList.add("selected");
-            statusIndicator.textContent = "unsaved"; // Set to unsaved
+            statusIndicator.textContent = "unsaved";
 
             const answerId = button.dataset.answerId;
-            const parsedAnswerId = answerId === 'null' ? null : parseInt(answerId!);
+            // Correctly handle null/undefined answerId
+            const parsedAnswerId = answerId === 'null' ? null : (answerId ? parseInt(answerId, 10) : null);
 
-			// Simulate saving (replace with your actual save logic)
+
+            if (questionId === null) {
+                console.error("Question ID not found!");
+                statusIndicator.textContent = "error"; // Indicate an error state
+                return; // Stop execution if questionId is missing
+            }
+
+            // Handle the case where parsedAnswerId is null (from an invalid data-answer-id)
+            if (parsedAnswerId === null && answerId !== 'null') {
+                console.error("Invalid answer ID:", answerId);
+                statusIndicator.textContent = "error";
+                return; // Stop if the answer ID is invalid (not "null" but also not a number)
+            }
+
             try {
-                // Placeholder for save logic - replace with your actual save operation
-                // Example (using a Promise for demonstration):
-                await new Promise<void>((resolve) => {
-                  console.log("Answer ID:", parsedAnswerId);
-                  setTimeout(() => {
-                      resolve();
-                  }, 500); // Simulate a 500ms delay
+                const response = await fetch("/api/answers", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        questionId: questionId,  // Now correctly using the questionId
+                        answerId: parsedAnswerId,
+                    }),
                 });
-                statusIndicator.textContent = "saved"; // Set to saved on success
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || "Failed to save answer");
+                }
+
+                statusIndicator.textContent = "saved";
             } catch (error) {
                 console.error("Error saving answer:", error);
-                statusIndicator.textContent = "error"; // Or handle errors differently
+                statusIndicator.textContent = "error";
             }
         });
     });
 </script>
-
 <style>
     .navigation {
         display: flex;

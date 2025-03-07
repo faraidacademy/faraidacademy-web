@@ -1,3 +1,4 @@
+// src/lib/supabase.ts
 import { createClient } from "@supabase/supabase-js";
 
 export const supabase = createClient(
@@ -7,7 +8,6 @@ export const supabase = createClient(
     auth: {
       flowType: "pkce",
       autoRefreshToken: true,
-      detectSessionInUrl: false,
       persistSession: true,
     },
   },
