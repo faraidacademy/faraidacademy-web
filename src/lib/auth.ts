@@ -27,33 +27,30 @@ export function clearAuthCookies(cookies: AstroCookies) {
 }
 
 export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Locals) {
-  const accessToken = cookies.get("sb-access-token");
-  const refreshToken = cookies.get("sb-refresh-token");
+    const refreshToken = cookies.get("sb-refresh-token");
 
-  if (!accessToken || !refreshToken) {
-    return false;
-  }
+    if (!refreshToken) {
+        return false;
+    }
 
-  const { data, error } = await supabase.auth.setSession({
-    refresh_token: refreshToken.value,
-    access_token: accessToken.value,
-  });
+    const { data: { session }, error } = await supabase.auth.getSession();
 
-  if (error) {
-    clearAuthCookies(cookies);
-    return false;
-  }
+    if (error || !session) {
+        clearAuthCookies(cookies);
+        return false;
+    }
 
-  if (locals && data.user) {
-    locals.email = data.user.email ?? "";
-    locals.name = data.user.user_metadata?.name ?? "";
-    locals.avatar_url = data.user.user_metadata?.avatar_url ?? "";
-    locals.userId = data.user.id;
-  }
+    if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
+        setAuthCookies(cookies, session.access_token, session.refresh_token);
+    }
+    
 
-  if (data?.session?.access_token && data?.session?.refresh_token) {
-      setAuthCookies(cookies, data.session.access_token, data.session.refresh_token);
-  }
+    if (locals && session.user) {
+        locals.email = session.user.email ?? "";
+        locals.name = session.user.user_metadata?.name ?? "";
+        locals.avatar_url = session.user.user_metadata?.avatar_url ?? "";
+        locals.userId = session.user.id;
+    }
 
-  return true;
+    return true;
 }

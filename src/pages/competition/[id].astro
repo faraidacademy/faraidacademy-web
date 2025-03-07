@@ -52,7 +52,6 @@ if (countError) {
 }
 
 const totalQuestionCount = totalQuestions ?? 0;
-
 ---
 
 <Base title={`Question ${questionId}`}>
@@ -64,6 +63,7 @@ const totalQuestionCount = totalQuestions ?? 0;
         {question.fraction && <p>Fraction: {question.fraction}</p>}
 
         <h2>Answers</h2>
+        <p>Status: <span id="status-indicator">unsaved</span></p> {/* Status Indicator */}
         <ul>
             {
                 answers.map((answer) => (
@@ -103,14 +103,32 @@ const totalQuestionCount = totalQuestions ?? 0;
 <script>
     const answerButtons =
         document.querySelectorAll<HTMLElement>(".answer-button");
+    const statusIndicator = document.getElementById("status-indicator")!;
 
     answerButtons.forEach((button) => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", async () => { // Added async
             answerButtons.forEach((b) => b.classList.remove("selected"));
             button.classList.add("selected");
+            statusIndicator.textContent = "unsaved"; // Set to unsaved
 
             const answerId = button.dataset.answerId;
-            console.log("Answer ID:", answerId === 'null' ? null : parseInt(answerId!));
+            const parsedAnswerId = answerId === 'null' ? null : parseInt(answerId!);
+
+			// Simulate saving (replace with your actual save logic)
+            try {
+                // Placeholder for save logic - replace with your actual save operation
+                // Example (using a Promise for demonstration):
+                await new Promise<void>((resolve) => {
+                  console.log("Answer ID:", parsedAnswerId);
+                  setTimeout(() => {
+                      resolve();
+                  }, 500); // Simulate a 500ms delay
+                });
+                statusIndicator.textContent = "saved"; // Set to saved on success
+            } catch (error) {
+                console.error("Error saving answer:", error);
+                statusIndicator.textContent = "error"; // Or handle errors differently
+            }
         });
     });
 </script>

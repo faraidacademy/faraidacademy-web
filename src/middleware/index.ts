@@ -4,7 +4,11 @@ import micromatch from "micromatch";
 import { checkAndSetSession } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 
-const protectedRoutes = ["/dashboard(|/)", "/competition(|/)", "/competition/[id](|/)"];
+const protectedRoutes = [
+    "/dashboard(|/)",
+    "/competition",
+    "/competition/**",
+];
 const redirectRoutes = ["/signin(|/)", "/register(|/)"];
 const proptectedAPIRoutes = ["/api/questions(|/)"];
 
