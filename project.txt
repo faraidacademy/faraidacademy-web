@@ -1,26 +1,5 @@
 ---
 
-`src\pages\competition\index.astro`:
-```
----
-// src/pages/competition/index.astro
-import Base from "../../layout/Base.astro";
-
----
-
-<Base title="Competition">
-  <section>
-    <h1>Competition</h1>
-    <p>Select a question to start:</p>
-    <ul>
-        <li><a href="/competition/1">Start Competition</a></li>
-    </ul>
-  </section>
-</Base>
-```
-
----
-
 `src\types.ts`:
 ```
 // src/types.ts
@@ -41,6 +20,239 @@ export interface Answer {
   answer: number;
   is_correct: boolean;
 }
+```
+
+---
+
+`src\middleware\index.ts`:
+```
+// src/middleware/index.ts
+import { defineMiddleware } from "astro:middleware";
+import micromatch from "micromatch";
+import { checkAndSetSession } from "../lib/auth";
+import { supabase } from "../lib/supabase";
+
+const protectedRoutes = [
+    "/dashboard(|/)",
+    "/competition",
+    "/competition/**",
+];
+const redirectRoutes = ["/signin(|/)", "/register(|/)"];
+const proptectedAPIRoutes = ["/api/questions(|/)"];
+
+export const onRequest = defineMiddleware(
+  async ({ locals, url, cookies, redirect }, next) => {
+    if (micromatch.isMatch(url.pathname, protectedRoutes)) {
+        const isLoggedIn = await checkAndSetSession(cookies, locals);
+      if (!isLoggedIn) {
+        return redirect("/signin");
+      }
+    }
+
+    if (micromatch.isMatch(url.pathname, redirectRoutes)) {
+      const isLoggedIn = await checkAndSetSession(cookies);
+      if (isLoggedIn) {
+        return redirect("/dashboard");
+      }
+    }
+    if (micromatch.isMatch(url.pathname, proptectedAPIRoutes)) {
+      const accessToken = cookies.get("sb-access-token");
+      const refreshToken = cookies.get("sb-refresh-token");
+
+      if (!accessToken || !refreshToken) {
+        return new Response(
+          JSON.stringify({
+            error: "Unauthorized",
+          }),
+          { status: 401 },
+        );
+      }
+
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken.value,
+        refresh_token: refreshToken.value,
+      });
+
+      if (error) {
+        return new Response(
+          JSON.stringify({
+            error: "Unauthorized",
+          }),
+          { status: 401 },
+        );
+      }
+    }
+
+    return next();
+  },
+);
+```
+
+---
+
+`src\env.d.ts`:
+```
+declare namespace App {
+  interface Locals {
+    email: string;
+    name: string;
+    avatar_url: string;
+    userId: string;
+  }
+}
+```
+
+---
+
+`src\pages\dashboard.astro`:
+```
+---
+// src/pages/dashboard.astro
+import { Image } from 'astro:assets';
+import Base from "../layout/Base.astro";
+
+const { email, name, avatar_url, userId } = Astro.locals; // Destructure userId
+---
+
+<Base title="Dashboard">
+  <section>
+    {avatar_url && <Image src={avatar_url} alt={name ? `${name}'s avatar` : "User Avatar"} width={64} height={64} />}
+    <p>Welcome, {name || email}!</p>
+    <p>User ID: {userId}</p> {/* Example usage - display the userId */}
+    <p>This is a protected page.</p>
+    <a href="/api/auth/signout">Sign out</a>
+  </section>
+</Base>
+```
+
+---
+
+`astro.config.mjs`:
+```
+import { defineConfig } from 'astro/config';
+import netlify from '@astrojs/netlify';
+
+export default defineConfig({
+  image: {
+    domains: ["googleusercontent.com"],
+  },
+  output: 'server',
+  adapter: netlify({
+    edgeMiddleware: false,
+  }),
+});
+```
+
+---
+
+`src\layout\Base.astro`:
+```
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+import '@fontsource-variable/open-sans';
+---
+
+<style is:global>
+  body {
+    font-family: "Open Sans", sans-serif;
+    font-size: 1rem;
+  }
+</style>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{title}</title>
+    <meta name="viewport" content="width=device-width" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+```
+
+---
+
+`src\pages\api\auth\signout.ts`:
+```
+// src/pages/api/auth/signout.ts
+import type { APIRoute } from "astro";
+import { clearAuthCookies } from "../../../lib/auth"; // Import
+
+export const GET: APIRoute = async ({ cookies, redirect }) => {
+  clearAuthCookies(cookies); // Use helper
+  return redirect("/signin");
+};
+```
+
+---
+
+`src\pages\api\questions.ts`:
+```
+// src/pages/api/questions.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../lib/supabase";
+import type { PostgrestError } from "@supabase/supabase-js";
+
+function handleSupabaseError(error: PostgrestError) {
+    return new Response(
+        JSON.stringify({
+            error: error.message,
+        }),
+        { status: 500 },
+    );
+}
+
+export const GET: APIRoute = async () => {
+    const { data: questions, error: questionsError } = await supabase
+        .from("questions")
+        .select("*")
+        .order("order", { ascending: true });
+
+    if (questionsError) return handleSupabaseError(questionsError);
+
+    const { data: allAnswers, error: answersError } = await supabase
+        .from("answers")
+        .select("id, question_id, is_correct");
+
+    if (answersError) return handleSupabaseError(answersError);
+
+    const correctAnswerMap = new Map<number, number>();
+    allAnswers?.forEach((answer) => {
+        if (answer.is_correct) correctAnswerMap.set(answer.question_id, answer.id);
+    });
+
+    const questionsWithAnswers = questions.map((question) => ({
+        ...question,
+        correctAnswerId: correctAnswerMap.get(question.id) ?? null,
+    }));
+
+    return new Response(JSON.stringify(questionsWithAnswers));
+};
+
+export const POST: APIRoute = async () => {
+    return new Response(
+        JSON.stringify({ error: "Method Not Allowed" }),
+        { status: 405, headers: { "Allow": "GET" } }
+    );
+}
+```
+
+---
+
+`tsconfig.json`:
+```
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"]
+}
+
 ```
 
 ---
@@ -208,413 +420,6 @@ const totalQuestionCount = totalQuestions ?? 0;
 
 ---
 
-`src\middleware\index.ts`:
-```
-// src/middleware/index.ts
-import { defineMiddleware } from "astro:middleware";
-import micromatch from "micromatch";
-import { checkAndSetSession } from "../lib/auth";
-import { supabase } from "../lib/supabase";
-
-const protectedRoutes = [
-    "/dashboard(|/)",
-    "/competition",
-    "/competition/**",
-];
-const redirectRoutes = ["/signin(|/)", "/register(|/)"];
-const proptectedAPIRoutes = ["/api/questions(|/)"];
-
-export const onRequest = defineMiddleware(
-  async ({ locals, url, cookies, redirect }, next) => {
-    if (micromatch.isMatch(url.pathname, protectedRoutes)) {
-        const isLoggedIn = await checkAndSetSession(cookies, locals);
-      if (!isLoggedIn) {
-        return redirect("/signin");
-      }
-    }
-
-    if (micromatch.isMatch(url.pathname, redirectRoutes)) {
-      const isLoggedIn = await checkAndSetSession(cookies);
-      if (isLoggedIn) {
-        return redirect("/dashboard");
-      }
-    }
-    if (micromatch.isMatch(url.pathname, proptectedAPIRoutes)) {
-      const accessToken = cookies.get("sb-access-token");
-      const refreshToken = cookies.get("sb-refresh-token");
-
-      if (!accessToken || !refreshToken) {
-        return new Response(
-          JSON.stringify({
-            error: "Unauthorized",
-          }),
-          { status: 401 },
-        );
-      }
-
-      const { error } = await supabase.auth.setSession({
-        access_token: accessToken.value,
-        refresh_token: refreshToken.value,
-      });
-
-      if (error) {
-        return new Response(
-          JSON.stringify({
-            error: "Unauthorized",
-          }),
-          { status: 401 },
-        );
-      }
-    }
-
-    return next();
-  },
-);
-```
-
----
-
-`src\pages\api\questions.ts`:
-```
-// src/pages/api/questions.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../lib/supabase";
-import type { PostgrestError } from "@supabase/supabase-js";
-
-function handleSupabaseError(error: PostgrestError) {
-    return new Response(
-        JSON.stringify({
-            error: error.message,
-        }),
-        { status: 500 },
-    );
-}
-
-export const GET: APIRoute = async () => {
-    const { data: questions, error: questionsError } = await supabase
-        .from("questions")
-        .select("*")
-        .order("order", { ascending: true });
-
-    if (questionsError) return handleSupabaseError(questionsError);
-
-    const { data: allAnswers, error: answersError } = await supabase
-        .from("answers")
-        .select("id, question_id, is_correct");
-
-    if (answersError) return handleSupabaseError(answersError);
-
-    const correctAnswerMap = new Map<number, number>();
-    allAnswers?.forEach((answer) => {
-        if (answer.is_correct) correctAnswerMap.set(answer.question_id, answer.id);
-    });
-
-    const questionsWithAnswers = questions.map((question) => ({
-        ...question,
-        correctAnswerId: correctAnswerMap.get(question.id) ?? null,
-    }));
-
-    return new Response(JSON.stringify(questionsWithAnswers));
-};
-
-export const POST: APIRoute = async () => {
-    return new Response(
-        JSON.stringify({ error: "Method Not Allowed" }),
-        { status: 405, headers: { "Allow": "GET" } }
-    );
-}
-```
-
----
-
-`src\pages\api\auth\signout.ts`:
-```
-// src/pages/api/auth/signout.ts
-import type { APIRoute } from "astro";
-import { clearAuthCookies } from "../../../lib/auth"; // Import
-
-export const GET: APIRoute = async ({ cookies, redirect }) => {
-  clearAuthCookies(cookies); // Use helper
-  return redirect("/signin");
-};
-```
-
----
-
-`src\pages\dashboard.astro`:
-```
----
-// src/pages/dashboard.astro
-import { Image } from 'astro:assets';
-import Base from "../layout/Base.astro";
-
-const { email, name, avatar_url, userId } = Astro.locals; // Destructure userId
----
-
-<Base title="Dashboard">
-  <section>
-    {avatar_url && <Image src={avatar_url} alt={name ? `${name}'s avatar` : "User Avatar"} width={64} height={64} />}
-    <p>Welcome, {name || email}!</p>
-    <p>User ID: {userId}</p> {/* Example usage - display the userId */}
-    <p>This is a protected page.</p>
-    <a href="/api/auth/signout">Sign out</a>
-  </section>
-</Base>
-```
-
----
-
-`src\layout\Base.astro`:
-```
----
-interface Props {
-  title: string;
-}
-
-const { title } = Astro.props;
-import '@fontsource-variable/open-sans';
----
-
-<style is:global>
-  body {
-    font-family: "Open Sans", sans-serif;
-    font-size: 1rem;
-  }
-</style>
-
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>{title}</title>
-    <meta name="viewport" content="width=device-width" />
-  </head>
-  <body>
-    <slot />
-  </body>
-</html>
-
-```
-
----
-
-`astro.config.mjs`:
-```
-import { defineConfig } from 'astro/config';
-import netlify from '@astrojs/netlify';
-
-export default defineConfig({
-  image: {
-    domains: ["googleusercontent.com"],
-  },
-  output: 'server',
-  adapter: netlify({
-    edgeMiddleware: false,
-  }),
-});
-```
-
----
-
-`src\env.d.ts`:
-```
-declare namespace App {
-  interface Locals {
-    email: string;
-    name: string;
-    avatar_url: string;
-    userId: string;
-  }
-}
-```
-
----
-
-`src\lib\supabase.ts`:
-```
-import { createClient } from "@supabase/supabase-js";
-
-export const supabase = createClient(
-  import.meta.env.SUPABASE_URL,
-  import.meta.env.SUPABASE_ANON_KEY,
-  {
-    auth: {
-      flowType: "pkce",
-      autoRefreshToken: true,
-      detectSessionInUrl: false,
-      persistSession: true,
-    },
-  },
-);
-```
-
----
-
-`src\pages\api\auth\signin.ts`:
-```
-// src/pages/api/auth/signin.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
-import type { Provider } from "@supabase/supabase-js";
-
-export const POST: APIRoute = async ({ request, redirect }) => {
-  const formData = await request.formData();
-  const provider = formData.get("provider")?.toString();
-
-  if (provider) {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: provider as Provider,
-      options: {
-        redirectTo: import.meta.env.DEV
-          ? "http://localhost:4321/api/auth/callback"
-          : "https://faraidacademy.netlify.app/api/auth/callback",
-      },
-    });
-
-    if (error) {
-      return new Response(error.message, { status: 500 });
-    }
-
-    return redirect(data.url);
-  }
-
-  return new Response("Provider required", { status: 400 });
-};
-```
-
----
-
-`src\pages\index.astro`:
-```
----
-// src/pages/index.astro
-import Base from "../layout/Base.astro";
-import { checkAndSetSession } from '../lib/auth';
-
-const isLoggedIn = await checkAndSetSession(Astro.cookies);
-
----
-
-<Base title="Home">
-  <h1>Welcome</h1>
-  {
-    isLoggedIn ? (
-      <p>
-        You are logged in. <a href="/dashboard">Go to Dashboard</a>
-      </p>
-    ) : (
-      <p>
-        <a href="/signin">Sign in</a> to access the dashboard.
-      </p>
-    )
-  }
-</Base>
-```
-
----
-
-`tsconfig.json`:
-```
-{
-  "extends": "astro/tsconfigs/strict",
-  "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist"]
-}
-
-```
-
----
-
-`src\components\AuthForm.astro`:
-```
----
-// src/components/AuthForm.astro
-interface Props {
-  showProviderButtons?: boolean;
-}
-
-const { showProviderButtons = false } = Astro.props;
----
-
-{
-  showProviderButtons && (
-    <>
-      <p>Sign in with</p>
-      <form action="/api/auth/signin" method="post">
-        <button value="google" name="provider" type="submit">
-          Sign in with Google
-        </button>
-      </form>
-    </>
-  )
-}
-```
-
----
-
-`src\pages\signin.astro`:
-```
----
-// src/pages/signin.astro
-import Base from "../layout/Base.astro";
-import AuthForm from "../components/AuthForm.astro";
-const title = "Sign in";
-
----
-
-<Base title={title}>
-  <main>
-    <section>
-      <h1>{title}</h1>
-      <AuthForm showProviderButtons />
-    </section>
-  </main>
-</Base>
-```
-
----
-
-`src\pages\api\auth\callback.ts`:
-```
-// src/pages/api/auth/callback.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
-
-export const GET: APIRoute = async ({ url, cookies, redirect }) => {
-  const authCode = url.searchParams.get("code");
-
-  if (!authCode) {
-    return new Response("No code provided", { status: 400 });
-  }
-
-  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
-
-  if (error) {
-    return new Response(error.message, { status: 500 });
-  }
-
-  const { access_token, refresh_token } = data.session;
-
-  cookies.set("sb-access-token", access_token, {
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-  cookies.set("sb-refresh-token", refresh_token, {
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-
-  // Create a new URL object for the /dashboard page
-  const redirectUrl = new URL('/dashboard', url.origin);
-
-  // Redirect to the cleaned URL
-  return redirect(redirectUrl.toString());
-};
-```
-
----
-
 `src\lib\auth.ts`:
 ```
 // src/lib/auth.ts
@@ -662,7 +467,7 @@ export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Loc
     if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
         setAuthCookies(cookies, session.access_token, session.refresh_token);
     }
-    
+
 
     if (locals && session.user) {
         locals.email = session.user.email ?? "";
@@ -673,6 +478,209 @@ export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Loc
 
     return true;
 }
+```
+
+---
+
+`src\pages\api\auth\signin.ts`:
+```
+// src/pages/api/auth/signin.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../../lib/supabase";
+import type { Provider } from "@supabase/supabase-js";
+
+export const POST: APIRoute = async ({ request, redirect }) => {
+  const formData = await request.formData();
+  const provider = formData.get("provider")?.toString();
+
+  if (provider) {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: provider as Provider,
+      options: {
+        redirectTo: import.meta.env.DEV
+          ? "http://localhost:4321/api/auth/callback"
+          : "https://faraidacademy.netlify.app/api/auth/callback",
+      },
+    });
+
+    if (error) {
+      return new Response(error.message, { status: 500 });
+    }
+
+    return redirect(data.url);
+  }
+
+  return new Response("Provider required", { status: 400 });
+};
+```
+
+---
+
+`src\lib\supabase.ts`:
+```
+import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  import.meta.env.SUPABASE_URL,
+  import.meta.env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      flowType: "pkce",
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      persistSession: true,
+    },
+  },
+);
+```
+
+---
+
+`src\pages\api\auth\callback.ts`:
+```
+// src/pages/api/auth/callback.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../../lib/supabase";
+
+export const GET: APIRoute = async ({ url, cookies, redirect }) => {
+  const authCode = url.searchParams.get("code");
+
+  if (!authCode) {
+    return new Response("No code provided", { status: 400 });
+  }
+
+  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+
+  if (error) {
+    return new Response(error.message, { status: 500 });
+  }
+
+  const { access_token, refresh_token } = data.session;
+
+  cookies.set("sb-access-token", access_token, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+  cookies.set("sb-refresh-token", refresh_token, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+
+  // Create a new URL object for the /dashboard page
+  const redirectUrl = new URL('/dashboard', url.origin);
+
+  // Redirect to the cleaned URL
+  return redirect(redirectUrl.toString());
+};
+```
+
+---
+
+`src\pages\competition\index.astro`:
+```
+---
+// src/pages/competition/index.astro
+import Base from "../../layout/Base.astro";
+
+---
+
+<Base title="Competition">
+  <section>
+    <h1>Competition</h1>
+    <p>Select a question to start:</p>
+    <ul>
+        <li><a href="/competition/1">Start Competition</a></li>
+    </ul>
+  </section>
+</Base>
+```
+
+---
+
+`src\components\AuthForm.astro`:
+```
+---
+// src/components/AuthForm.astro
+interface Props {
+  showProviderButtons?: boolean;
+}
+
+const { showProviderButtons = false } = Astro.props;
+---
+
+{
+  showProviderButtons && (
+    <>
+      <p>Sign in with</p>
+      <form action="/api/auth/signin" method="post">
+        <button value="google" name="provider" type="submit">
+          Sign in with Google
+        </button>
+      </form>
+    </>
+  )
+}
+```
+
+---
+
+`src\pages\index.astro`:
+```
+---
+// src/pages/index.astro
+import Base from "../layout/Base.astro";
+import { checkAndSetSession } from '../lib/auth';
+
+const isLoggedIn = await checkAndSetSession(Astro.cookies);
+
+---
+
+<Base title="Home">
+  <h1>Welcome</h1>
+  {
+    isLoggedIn ? (
+      <p>
+        You are logged in. <a href="/dashboard">Go to Dashboard</a>
+      </p>
+    ) : (
+      <p>
+        <a href="/signin">Sign in</a> to access the dashboard.
+      </p>
+    )
+  }
+</Base>
+```
+
+---
+
+`src\pages\signin.astro`:
+```
+---
+// src/pages/signin.astro
+import Base from "../layout/Base.astro";
+import AuthForm from "../components/AuthForm.astro";
+const title = "Sign in";
+
+---
+
+<Base title={title}>
+  <main>
+    <section>
+      <h1>{title}</h1>
+      <AuthForm showProviderButtons />
+    </section>
+  </main>
+</Base>
+```
+
+---
+
+`.env`:
+```
+SUPABASE_URL=https://nbytvsctrjknlbemdfwe.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ieXR2c2N0cmprbmxiZW1kZndlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzMTA5MTgsImV4cCI6MjA1Mzg4NjkxOH0.llpjzwUPxba4pU_egjpDuVdX3K4Gtw9wPes82zCgTjI
 ```
 
 ---
