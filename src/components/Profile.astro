@@ -1,0 +1,41 @@
+---
+import { Image } from "astro:assets";
+const { email, name, avatar_url, userId, createdAt } = Astro.locals;
+
+function formatDate(dateString: string | undefined) {
+  if (!dateString) {
+    return "Unknown";
+  }
+  const date = new Date(dateString);
+  return date.toLocaleDateString('id-ID', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+---
+
+<section>
+    {
+        avatar_url && (
+            <Image
+            class="avatar"
+                src={avatar_url}
+                alt={name ? `${name}'s avatar` : "User Avatar"}
+                width={64}
+                height={64}
+            />
+        )
+    }
+    <p>{name || email}</p>
+    <p>Terdaftar: {formatDate(createdAt)}</p>
+    <a href="/index">Halaman Utama</a>
+    <a href="/api/auth/signout">Sign out</a>
+</section>
+
+<style>
+    .avatar{
+        border-radius:50%;
+    }
+</style>

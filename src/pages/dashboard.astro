@@ -1,17 +1,28 @@
 ---
 // src/pages/dashboard.astro
-import { Image } from 'astro:assets';
-import Base from "../layout/Base.astro";
 
-const { email, name, avatar_url, userId } = Astro.locals; // Destructure userId
+import Base from "../layout/Base.astro";
+import Form from "../components/Form.astro";
+import Profile from "../components/Profile.astro";
+const { name } = Astro.locals;
 ---
 
 <Base title="Dashboard">
-  <section>
-    {avatar_url && <Image src={avatar_url} alt={name ? `${name}'s avatar` : "User Avatar"} width={64} height={64} />}
-    <p>Welcome, {name || email}!</p>
-    <p>User ID: {userId}</p> {/* Example usage - display the userId */}
-    <p>This is a protected page.</p>
-    <a href="/api/auth/signout">Sign out</a>
-  </section>
+  <Profile />
+  <Form />
+  <md-text-button id="edit-profile-button">EDIT PROFIL</md-text-button>
 </Base>
+
+<script>
+  import "material/button/text-button";
+  import "material/dialog/dialog";
+
+  const editProfileButton = document.getElementById("edit-profile-button");
+  const dialog = document.querySelector("#edit-profile") as any; // Type assertion!
+
+  if (editProfileButton && dialog) {
+    editProfileButton.addEventListener('click', () => {
+      dialog.open = true;
+    });
+  }
+</script>

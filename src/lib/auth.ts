@@ -50,6 +50,7 @@ export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Loc
         locals.name = session.user.user_metadata?.name ?? "";
         locals.avatar_url = session.user.user_metadata?.avatar_url ?? "";
         locals.userId = session.user.id;
+        locals.createdAt = session.user.created_at;
     }
 
     return true;

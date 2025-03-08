@@ -4,5 +4,6 @@ declare namespace App {
     name: string;
     avatar_url: string;
     userId: string;
+    createdAt: string;
   }
 }
