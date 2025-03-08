@@ -47,7 +47,7 @@ if (countError) {
 }
 const totalQuestionCount = totalQuestions ?? 0;
 
-let userResult = null;
+let userResult = undefined;
 
 if (Astro.locals.userId) {
   const { data: resultData, error: resultError } = await supabase
@@ -61,8 +61,6 @@ if (Astro.locals.userId) {
     console.error("Error fetching user result:", resultError);
   } else if (resultData) {
     userResult = resultData.answer_id;
-  } else {
-    userResult = null;
   }
 }
 ---
@@ -79,23 +77,23 @@ if (Astro.locals.userId) {
         <p>Status: <span id="status-indicator">unsaved</span></p>
         <ul>
             {
-                answers.map((answer) => (
-                    <li>
-                        <button
-                            data-answer-id={answer.id}
-                            class={`answer-button ${userResult === answer.id ? 'selected' : ''}`}
-                        >
-                            {answer.answer}
-                        </button>
-                    </li>
-                ))
+              answers.map((answer) => (
+                <li>
+                  <button
+                    data-answer-id={answer.id}
+                    class={`answer-button ${userResult === answer.id ? 'selected' : ''}`}
+                  >
+                    {answer.answer}
+                  </button>
+                </li>
+              ))
             }
             <li>
               <button data-answer-id="null" class={`answer-button ${userResult === null ? 'selected' : ''}`}>
-                    None of the Above
-                </button>
+                None of the Above
+              </button>
             </li>
-        </ul>
+          </ul>
 
         <div class="navigation">
             {
