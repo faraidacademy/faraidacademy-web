@@ -7,52 +7,48 @@ import type { Question, Answer } from "../../types";
 const { id } = Astro.params;
 
 if (!id || isNaN(Number(id))) {
-    return Astro.redirect("/competition");
+  return Astro.redirect("/competition");
 }
 
 const questionId = Number(id);
 
 const { data: questionData, error: questionError } = await supabase
-    .from("questions")
-    .select("*")
-    .eq("id", questionId)
-    .single();
+  .from("questions")
+  .select("*")
+  .eq("id", questionId)
+  .single();
 
 if (questionError) {
-    console.error(questionError);
-    return new Response("Error fetching question", { status: 500 });
+  return handleSupabaseError(questionError, "Error fetching question");
 }
 
 if (!questionData) {
-    return Astro.redirect("/competition");
+  return Astro.redirect("/competition");
 }
 
 const { data: answersData, error: answersError } = await supabase
-    .from("answers")
-    .select("*")
-    .eq("question_id", questionId);
+  .from("answers")
+  .select("*")
+  .eq("question_id", questionId);
 
 if (answersError) {
-    console.error(answersError);
-    return new Response("Error fetching answers", { status: 500 });
+  return handleSupabaseError(answersError, "Error fetching answers");
 }
 
 const question: Question = questionData;
 const answers: Answer[] = answersData || [];
 
 const { count: totalQuestions, error: countError } = await supabase
-    .from("questions")
-    .select("*", { count: "exact", head: true });
+  .from("questions")
+  .select("*", { count: "exact", head: true });
 
 if (countError) {
-    console.error(countError);
-    return new Response("Error fetching total questions number", {
-        status: 500,
-    });
+    return handleCountError(countError, "Error fetching total questions number");
 }
 const totalQuestionCount = totalQuestions ?? 0;
 
 let userResult = null;
+
 if (Astro.locals.userId) {
   const { data: resultData, error: resultError } = await supabase
     .from("results")
@@ -64,13 +60,15 @@ if (Astro.locals.userId) {
   if (resultError && resultError.code !== 'PGRST116') {
     console.error("Error fetching user result:", resultError);
   } else if (resultData) {
-      userResult = resultData.answer_id;
+    userResult = resultData.answer_id;
+  } else {
+    userResult = null;
   }
 }
 ---
 
 <Base title={`Question ${questionId}`}>
-    <section data-question-id={questionId}> {/* Add data-question-id here */}
+    <section data-question-id={questionId}>
         <h1>Question {questionId}</h1>
         <p>Case: {question.case}</p>
         {question.money && <p>Money: {question.money}</p>}
@@ -119,9 +117,18 @@ if (Astro.locals.userId) {
     const answerButtons = document.querySelectorAll<HTMLElement>(".answer-button");
     const statusIndicator = document.getElementById("status-indicator")!;
 
-    // Get questionId from the data attribute.  Crucially, we get it *from the section*.
+    // Get questionId from the data attribute.
     const sectionElement = document.querySelector('section');
     const questionId = sectionElement ? parseInt(sectionElement.dataset.questionId || '', 10) : null;
+
+    // Helper function for handling fetch errors
+    async function handleFetchError(response: Response) {
+        if (!response.ok) {
+            const errorData = await response.json();
+            const errorMessage = errorData.error || "Failed to save answer";
+            throw new Error(errorMessage);
+        }
+    }
 
     answerButtons.forEach((button) => {
         button.addEventListener("click", async () => {
@@ -130,21 +137,18 @@ if (Astro.locals.userId) {
             statusIndicator.textContent = "unsaved";
 
             const answerId = button.dataset.answerId;
-            // Correctly handle null/undefined answerId
             const parsedAnswerId = answerId === 'null' ? null : (answerId ? parseInt(answerId, 10) : null);
-
 
             if (questionId === null) {
                 console.error("Question ID not found!");
-                statusIndicator.textContent = "error"; // Indicate an error state
-                return; // Stop execution if questionId is missing
+                statusIndicator.textContent = "error";
+                return;
             }
 
-            // Handle the case where parsedAnswerId is null (from an invalid data-answer-id)
             if (parsedAnswerId === null && answerId !== 'null') {
                 console.error("Invalid answer ID:", answerId);
                 statusIndicator.textContent = "error";
-                return; // Stop if the answer ID is invalid (not "null" but also not a number)
+                return;
             }
 
             try {
@@ -154,17 +158,14 @@ if (Astro.locals.userId) {
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        questionId: questionId,  // Now correctly using the questionId
+                        questionId: questionId,
                         answerId: parsedAnswerId,
                     }),
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || "Failed to save answer");
-                }
-
+                await handleFetchError(response);
                 statusIndicator.textContent = "saved";
+
             } catch (error) {
                 console.error("Error saving answer:", error);
                 statusIndicator.textContent = "error";

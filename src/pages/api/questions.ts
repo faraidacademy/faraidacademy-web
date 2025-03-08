@@ -1,16 +1,10 @@
 // src/pages/api/questions.ts
 import type { APIRoute } from "astro";
 import { supabase } from "../../lib/supabase";
-import type { PostgrestError } from "@supabase/supabase-js";
+// import type { PostgrestError } from "@supabase/supabase-js"; // No longer needed
+import { handleSupabaseError } from "../../lib/apiHelpers"; // Import the helper
 
-function handleSupabaseError(error: PostgrestError) {
-    return new Response(
-        JSON.stringify({
-            error: error.message,
-        }),
-        { status: 500 },
-    );
-}
+// function handleSupabaseError(error: PostgrestError) { ... } // DELETE THIS
 
 export const GET: APIRoute = async () => {
     const { data: questions, error: questionsError } = await supabase
@@ -18,13 +12,13 @@ export const GET: APIRoute = async () => {
         .select("*")
         .order("order", { ascending: true });
 
-    if (questionsError) return handleSupabaseError(questionsError);
+    if (questionsError) return handleSupabaseError(questionsError, "Error fetching questions"); // Use the helper
 
     const { data: allAnswers, error: answersError } = await supabase
         .from("answers")
         .select("id, question_id, is_correct");
 
-    if (answersError) return handleSupabaseError(answersError);
+    if (answersError) return handleSupabaseError(answersError, "Error fetching answers");
 
     const correctAnswerMap = new Map<number, number>();
     allAnswers?.forEach((answer) => {

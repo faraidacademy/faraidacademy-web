@@ -1,132 +1,5 @@
 ---
 
-`src\types.ts`:
-```
-// src/types.ts
-export interface Question {
-  id: number;
-  question: string;
-  fraction: string | null;
-  money: number | null;
-  case: string | null;
-  type: string | null;
-  order: number | null;
-  correctAnswerId?: number | null;
-}
-
-export interface Answer {
-  id: number;
-  question_id: number;
-  answer: number;
-  is_correct: boolean;
-}
-```
-
----
-
-`src\middleware\index.ts`:
-```
-// src/middleware/index.ts
-import { defineMiddleware } from "astro:middleware";
-import micromatch from "micromatch";
-import { checkAndSetSession } from "../lib/auth";
-import { supabase } from "../lib/supabase";
-
-const protectedRoutes = [
-    "/dashboard(|/)",
-    "/competition",
-    "/competition/**",
-];
-const redirectRoutes = ["/signin(|/)", "/register(|/)"];
-const proptectedAPIRoutes = ["/api/questions(|/)"];
-
-export const onRequest = defineMiddleware(
-  async ({ locals, url, cookies, redirect }, next) => {
-    if (micromatch.isMatch(url.pathname, protectedRoutes)) {
-        const isLoggedIn = await checkAndSetSession(cookies, locals);
-      if (!isLoggedIn) {
-        return redirect("/signin");
-      }
-    }
-
-    if (micromatch.isMatch(url.pathname, redirectRoutes)) {
-      const isLoggedIn = await checkAndSetSession(cookies);
-      if (isLoggedIn) {
-        return redirect("/dashboard");
-      }
-    }
-    if (micromatch.isMatch(url.pathname, proptectedAPIRoutes)) {
-      const accessToken = cookies.get("sb-access-token");
-      const refreshToken = cookies.get("sb-refresh-token");
-
-      if (!accessToken || !refreshToken) {
-        return new Response(
-          JSON.stringify({
-            error: "Unauthorized",
-          }),
-          { status: 401 },
-        );
-      }
-
-      const { error } = await supabase.auth.setSession({
-        access_token: accessToken.value,
-        refresh_token: refreshToken.value,
-      });
-
-      if (error) {
-        return new Response(
-          JSON.stringify({
-            error: "Unauthorized",
-          }),
-          { status: 401 },
-        );
-      }
-    }
-
-    return next();
-  },
-);
-```
-
----
-
-`src\env.d.ts`:
-```
-declare namespace App {
-  interface Locals {
-    email: string;
-    name: string;
-    avatar_url: string;
-    userId: string;
-  }
-}
-```
-
----
-
-`src\pages\dashboard.astro`:
-```
----
-// src/pages/dashboard.astro
-import { Image } from 'astro:assets';
-import Base from "../layout/Base.astro";
-
-const { email, name, avatar_url, userId } = Astro.locals; // Destructure userId
----
-
-<Base title="Dashboard">
-  <section>
-    {avatar_url && <Image src={avatar_url} alt={name ? `${name}'s avatar` : "User Avatar"} width={64} height={64} />}
-    <p>Welcome, {name || email}!</p>
-    <p>User ID: {userId}</p> {/* Example usage - display the userId */}
-    <p>This is a protected page.</p>
-    <a href="/api/auth/signout">Sign out</a>
-  </section>
-</Base>
-```
-
----
-
 `astro.config.mjs`:
 ```
 import { defineConfig } from 'astro/config';
@@ -141,6 +14,102 @@ export default defineConfig({
     edgeMiddleware: false,
   }),
 });
+```
+
+---
+
+`src\lib\supabase.ts`:
+```
+// src/lib/supabase.ts
+import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  import.meta.env.SUPABASE_URL,
+  import.meta.env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      flowType: "pkce",
+      autoRefreshToken: true,
+      persistSession: true,
+    },
+  },
+);
+```
+
+---
+
+`src\pages\competition\index.astro`:
+```
+---
+// src/pages/competition/index.astro
+import Base from "../../layout/Base.astro";
+
+---
+
+<Base title="Competition">
+  <section>
+    <h1>Competition</h1>
+    <p>Select a question to start:</p>
+    <ul>
+        <li><a href="/competition/1">Start Competition</a></li>
+    </ul>
+  </section>
+</Base>
+```
+
+---
+
+`tsconfig.json`:
+```
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"]
+}
+
+```
+
+---
+
+`src\pages\api\auth\signout.ts`:
+```
+// src/pages/api/auth/signout.ts
+import type { APIRoute } from "astro";
+import { clearAuthCookies } from "../../../lib/auth"; // Import
+
+export const GET: APIRoute = async ({ cookies, redirect }) => {
+  clearAuthCookies(cookies); // Use helper
+  return redirect("/signin");
+};
+```
+
+---
+
+`src\pages\index.astro`:
+```
+---
+// src/pages/index.astro
+import Base from "../layout/Base.astro";
+import { checkAndSetSession } from '../lib/auth';
+
+const isLoggedIn = await checkAndSetSession(Astro.cookies);
+
+---
+
+<Base title="Home">
+  <h1>Welcome</h1>
+  {
+    isLoggedIn ? (
+      <p>
+        You are logged in. <a href="/dashboard">Go to Dashboard</a>
+      </p>
+    ) : (
+      <p>
+        <a href="/signin">Sign in</a> to access the dashboard.
+      </p>
+    )
+  }
+</Base>
 ```
 
 ---
@@ -178,15 +147,97 @@ import '@fontsource-variable/open-sans';
 
 ---
 
-`src\pages\api\auth\signout.ts`:
+`src\pages\api\answers.ts`:
 ```
-// src/pages/api/auth/signout.ts
-import type { APIRoute } from "astro";
-import { clearAuthCookies } from "../../../lib/auth"; // Import
+ // src/pages/api/answers.ts
+ import type { APIRoute } from "astro";
+ import { supabase } from "../../lib/supabase";
+import { handleSupabaseError, handleRequestError } from "../../lib/apiHelpers";
 
-export const GET: APIRoute = async ({ cookies, redirect }) => {
-  clearAuthCookies(cookies); // Use helper
-  return redirect("/signin");
+ export const POST: APIRoute = async ({ request, locals, redirect }) => {
+ console.log("API Route /api/answers: locals:", locals); // Keep this log
+ // Authentication Check (handled by middleware, but good to double-check)
+ if (!locals.userId) {
+     return new Response(JSON.stringify({ error: "Unauthorized" }), {
+     status: 401,
+     headers: { 'Content-Type': 'application/json' }
+     });
+ }
+
+ try {
+     const { questionId, answerId } = await request.json();
+
+     // Validate input (important for security and data integrity)
+     if (!questionId || (answerId === undefined)) {
+     return new Response(
+         JSON.stringify({ error: "questionId and answerId are required" }),
+         { status: 400, headers: { 'Content-Type': 'application/json' } },
+     );
+     }
+
+     // Use upsert to insert or update the result
+     const { error } = await supabase
+     .from("results")
+     .upsert(
+         {
+         user_id: locals.userId,
+         question_id: questionId,
+         answer_id: answerId,
+         },
+         { onConflict: 'user_id,question_id' }
+     )
+     .select();
+
+     if (error) {
+        return handleSupabaseError(error, "Failed to save answer"); // Use the helper
+      }
+
+     return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    } catch (error) {
+        return handleRequestError(error, "Invalid request body"); // Use new helper
+    }
+ };
+```
+
+---
+
+`src\pages\api\auth\callback.ts`:
+```
+// src/pages/api/auth/callback.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../../lib/supabase";
+
+export const GET: APIRoute = async ({ url, cookies, redirect }) => {
+  const authCode = url.searchParams.get("code");
+
+  if (!authCode) {
+    return new Response("No code provided", { status: 400 });
+  }
+
+  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+
+  if (error) {
+    return new Response(error.message, { status: 500 });
+  }
+
+  const { access_token, refresh_token } = data.session;
+
+  cookies.set("sb-access-token", access_token, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+  cookies.set("sb-refresh-token", refresh_token, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+
+  // Create a new URL object for the /dashboard page
+  const redirectUrl = new URL('/dashboard', url.origin);
+
+  // Redirect to the cleaned URL
+  return redirect(redirectUrl.toString());
 };
 ```
 
@@ -197,16 +248,10 @@ export const GET: APIRoute = async ({ cookies, redirect }) => {
 // src/pages/api/questions.ts
 import type { APIRoute } from "astro";
 import { supabase } from "../../lib/supabase";
-import type { PostgrestError } from "@supabase/supabase-js";
+// import type { PostgrestError } from "@supabase/supabase-js"; // No longer needed
+import { handleSupabaseError } from "../../lib/apiHelpers"; // Import the helper
 
-function handleSupabaseError(error: PostgrestError) {
-    return new Response(
-        JSON.stringify({
-            error: error.message,
-        }),
-        { status: 500 },
-    );
-}
+// function handleSupabaseError(error: PostgrestError) { ... } // DELETE THIS
 
 export const GET: APIRoute = async () => {
     const { data: questions, error: questionsError } = await supabase
@@ -214,13 +259,13 @@ export const GET: APIRoute = async () => {
         .select("*")
         .order("order", { ascending: true });
 
-    if (questionsError) return handleSupabaseError(questionsError);
+    if (questionsError) return handleSupabaseError(questionsError, "Error fetching questions"); // Use the helper
 
     const { data: allAnswers, error: answersError } = await supabase
         .from("answers")
         .select("id, question_id, is_correct");
 
-    if (answersError) return handleSupabaseError(answersError);
+    if (answersError) return handleSupabaseError(answersError, "Error fetching answers");
 
     const correctAnswerMap = new Map<number, number>();
     allAnswers?.forEach((answer) => {
@@ -245,14 +290,43 @@ export const POST: APIRoute = async () => {
 
 ---
 
-`tsconfig.json`:
+`src\lib\apiHelpers.ts`:
 ```
-{
-  "extends": "astro/tsconfigs/strict",
-  "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist"]
+// src/lib/apiHelpers.ts
+import type { PostgrestError } from "@supabase/supabase-js";
+
+export function handleSupabaseError(error: PostgrestError, message: string) {
+  console.error(message, error);
+  return new Response(
+    JSON.stringify({
+      error: message,
+      details: error.message, // Include the specific error message
+    }),
+    { status: 500, headers: { "Content-Type": "application/json" } },
+  );
 }
 
+export function handleCountError(error: any, message: string) {
+    console.error(message, error);
+    return new Response(
+        JSON.stringify({
+            error: message,
+            details: error.message || "Unknown error",
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+}
+
+export function handleRequestError(error: any, message: string) {
+    console.error(message, error);
+    return new Response(
+        JSON.stringify({
+          error: message,
+          details: error.message || 'Invalid Request',
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 ```
 
 ---
@@ -264,59 +338,70 @@ export const POST: APIRoute = async () => {
 import Base from "../../layout/Base.astro";
 import { supabase } from "../../lib/supabase";
 import type { Question, Answer } from "../../types";
+import { handleSupabaseError, handleCountError } from "../../lib/apiHelpers";
 
 const { id } = Astro.params;
 
 if (!id || isNaN(Number(id))) {
-    return Astro.redirect("/competition");
+  return Astro.redirect("/competition");
 }
 
 const questionId = Number(id);
 
 const { data: questionData, error: questionError } = await supabase
-    .from("questions")
-    .select("*")
-    .eq("id", questionId)
-    .single();
+  .from("questions")
+  .select("*")
+  .eq("id", questionId)
+  .single();
 
 if (questionError) {
-    console.error(questionError);
-    return new Response("Error fetching question", { status: 500 });
+  return handleSupabaseError(questionError, "Error fetching question"); // Use the helper
 }
 
 if (!questionData) {
-    return Astro.redirect("/competition");
+  return Astro.redirect("/competition");
 }
 
 const { data: answersData, error: answersError } = await supabase
-    .from("answers")
-    .select("*")
-    .eq("question_id", questionId);
+  .from("answers")
+  .select("*")
+  .eq("question_id", questionId);
 
 if (answersError) {
-    console.error(answersError);
-    return new Response("Error fetching answers", { status: 500 });
+  return handleSupabaseError(answersError, "Error fetching answers"); // Use the helper
 }
 
 const question: Question = questionData;
-const answers: Answer[] = answersData || []; // Keep the answers array
+const answers: Answer[] = answersData || [];
 
 const { count: totalQuestions, error: countError } = await supabase
-    .from("questions")
-    .select("*", { count: "exact", head: true });
+  .from("questions")
+  .select("*", { count: "exact", head: true });
 
 if (countError) {
-    console.error(countError);
-    return new Response("Error fetching total questions number", {
-        status: 500,
-    });
+    return handleCountError(countError, "Error fetching total questions number"); // Use the new helper
 }
-
 const totalQuestionCount = totalQuestions ?? 0;
+
+let userResult = null;
+if (Astro.locals.userId) {
+  const { data: resultData, error: resultError } = await supabase
+    .from("results")
+    .select("answer_id")
+    .eq("user_id", Astro.locals.userId)
+    .eq("question_id", questionId)
+    .single();
+
+  if (resultError && resultError.code !== 'PGRST116') {
+    console.error("Error fetching user result:", resultError);
+  } else if (resultData) {
+      userResult = resultData.answer_id;
+  }
+}
 ---
 
 <Base title={`Question ${questionId}`}>
-    <section>
+    <section data-question-id={questionId}> {/* Add data-question-id here */}
         <h1>Question {questionId}</h1>
         <p>Case: {question.case}</p>
         {question.money && <p>Money: {question.money}</p>}
@@ -324,14 +409,14 @@ const totalQuestionCount = totalQuestions ?? 0;
         {question.fraction && <p>Fraction: {question.fraction}</p>}
 
         <h2>Answers</h2>
-        <p>Status: <span id="status-indicator">unsaved</span></p> {/* Status Indicator */}
+        <p>Status: <span id="status-indicator">unsaved</span></p>
         <ul>
             {
                 answers.map((answer) => (
                     <li>
                         <button
                             data-answer-id={answer.id}
-                            class="answer-button"
+                            class={`answer-button ${userResult === answer.id ? 'selected' : ''}`}
                         >
                             {answer.answer}
                         </button>
@@ -339,7 +424,7 @@ const totalQuestionCount = totalQuestions ?? 0;
                 ))
             }
             <li>
-                <button data-answer-id="null" class="answer-button">
+              <button data-answer-id="null" class={`answer-button ${userResult === null ? 'selected' : ''}`}>
                     None of the Above
                 </button>
             </li>
@@ -362,38 +447,65 @@ const totalQuestionCount = totalQuestions ?? 0;
 </Base>
 
 <script>
-    const answerButtons =
-        document.querySelectorAll<HTMLElement>(".answer-button");
+    const answerButtons = document.querySelectorAll<HTMLElement>(".answer-button");
     const statusIndicator = document.getElementById("status-indicator")!;
 
+    // Get questionId from the data attribute.
+    const sectionElement = document.querySelector('section');
+    const questionId = sectionElement ? parseInt(sectionElement.dataset.questionId || '', 10) : null;
+
+    // Helper function for handling fetch errors
+    async function handleFetchError(response: Response) {
+        if (!response.ok) {
+            const errorData = await response.json();
+            const errorMessage = errorData.error || "Failed to save answer";
+            throw new Error(errorMessage);
+        }
+    }
+
     answerButtons.forEach((button) => {
-        button.addEventListener("click", async () => { // Added async
+        button.addEventListener("click", async () => {
             answerButtons.forEach((b) => b.classList.remove("selected"));
             button.classList.add("selected");
-            statusIndicator.textContent = "unsaved"; // Set to unsaved
+            statusIndicator.textContent = "unsaved";
 
             const answerId = button.dataset.answerId;
-            const parsedAnswerId = answerId === 'null' ? null : parseInt(answerId!);
+            const parsedAnswerId = answerId === 'null' ? null : (answerId ? parseInt(answerId, 10) : null);
 
-                        // Simulate saving (replace with your actual save logic)
+            if (questionId === null) {
+                console.error("Question ID not found!");
+                statusIndicator.textContent = "error";
+                return;
+            }
+
+            if (parsedAnswerId === null && answerId !== 'null') {
+                console.error("Invalid answer ID:", answerId);
+                statusIndicator.textContent = "error";
+                return;
+            }
+
             try {
-                // Placeholder for save logic - replace with your actual save operation
-                // Example (using a Promise for demonstration):
-                await new Promise<void>((resolve) => {
-                  console.log("Answer ID:", parsedAnswerId);
-                  setTimeout(() => {
-                      resolve();
-                  }, 500); // Simulate a 500ms delay
+                const response = await fetch("/api/answers", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        questionId: questionId,
+                        answerId: parsedAnswerId,
+                    }),
                 });
-                statusIndicator.textContent = "saved"; // Set to saved on success
+
+                await handleFetchError(response); // Use the error handler
+                statusIndicator.textContent = "saved";
+
             } catch (error) {
                 console.error("Error saving answer:", error);
-                statusIndicator.textContent = "error"; // Or handle errors differently
+                statusIndicator.textContent = "error";
             }
         });
     });
 </script>
-
 <style>
     .navigation {
         display: flex;
@@ -416,6 +528,29 @@ const totalQuestionCount = totalQuestions ?? 0;
         color: black;
     }
 </style>
+```
+
+---
+
+`src\pages\dashboard.astro`:
+```
+---
+// src/pages/dashboard.astro
+import { Image } from 'astro:assets';
+import Base from "../layout/Base.astro";
+
+const { email, name, avatar_url, userId } = Astro.locals; // Destructure userId
+---
+
+<Base title="Dashboard">
+  <section>
+    {avatar_url && <Image src={avatar_url} alt={name ? `${name}'s avatar` : "User Avatar"} width={64} height={64} />}
+    <p>Welcome, {name || email}!</p>
+    <p>User ID: {userId}</p> {/* Example usage - display the userId */}
+    <p>This is a protected page.</p>
+    <a href="/api/auth/signout">Sign out</a>
+  </section>
+</Base>
 ```
 
 ---
@@ -482,6 +617,142 @@ export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Loc
 
 ---
 
+`src\pages\signin.astro`:
+```
+---
+// src/pages/signin.astro
+import Base from "../layout/Base.astro";
+import AuthForm from "../components/AuthForm.astro";
+const title = "Sign in";
+
+---
+
+<Base title={title}>
+  <main>
+    <section>
+      <h1>{title}</h1>
+      <AuthForm showProviderButtons />
+    </section>
+  </main>
+</Base>
+```
+
+---
+
+`src\components\AuthForm.astro`:
+```
+---
+// src/components/AuthForm.astro
+interface Props {
+  showProviderButtons?: boolean;
+}
+
+const { showProviderButtons = false } = Astro.props;
+---
+
+{
+  showProviderButtons && (
+    <>
+      <p>Sign in with</p>
+      <form action="/api/auth/signin" method="post">
+        <button value="google" name="provider" type="submit">
+          Sign in with Google
+        </button>
+      </form>
+    </>
+  )
+}
+```
+
+---
+
+`src\middleware\index.ts`:
+```
+// src/middleware/index.ts
+import { defineMiddleware } from "astro:middleware";
+import micromatch from "micromatch";
+import { checkAndSetSession, clearAuthCookies } from "../lib/auth"; // Import clearAuthCookies
+import { supabase } from "../lib/supabase";
+
+const protectedRoutes = [
+    "/dashboard(|/)",
+    "/competition",
+    "/competition/**",
+];
+const redirectRoutes = ["/signin(|/)", "/register(|/)"];
+const protectedAPIRoutes = ["/api/questions(|/)", "/api/answers(|/)"];
+
+export const onRequest = defineMiddleware(
+  async ({ locals, url, cookies, redirect }, next) => {
+    if (micromatch.isMatch(url.pathname, protectedRoutes)) {
+      const isLoggedIn = await checkAndSetSession(cookies, locals);
+      if (!isLoggedIn) {
+        return redirect("/signin");
+      }
+    }
+
+    if (micromatch.isMatch(url.pathname, redirectRoutes)) {
+      const isLoggedIn = await checkAndSetSession(cookies);
+      if (isLoggedIn) {
+        return redirect("/dashboard");
+      }
+    }
+
+    if (micromatch.isMatch(url.pathname, protectedAPIRoutes)) {
+      const refreshToken = cookies.get("sb-refresh-token");
+        console.log("Middleware: Checking API route:", url.pathname, refreshToken); // Keep this log
+
+      if (!refreshToken) { // Only need to check refresh token
+          return new Response(
+            JSON.stringify({
+              error: "Unauthorized",
+            }),
+            { status: 401, headers: { "Content-Type": "application/json" } }, // Set content type
+          );
+      }
+
+      const { data: { session }, error } = await supabase.auth.getSession(); // Use getSession
+        console.log("Middleware: session:", session, "error:", error);
+
+        if (error || !session) {
+            clearAuthCookies(cookies); // Clear cookies if session is invalid
+            return new Response(
+                JSON.stringify({
+                    error: "Unauthorized",
+                }),
+                { status: 401, headers: { "Content-Type": "application/json" } }, // Set content type
+            );
+        }
+
+        // checkAndSetSession already handles the cookie refresh, so we *remove* the redundant check here:
+        // if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
+        //    setAuthCookies(cookies, session.access_token, session.refresh_token);
+        // }
+      locals.userId = session.user.id; // Set locals.userId here! VERY IMPORTANT
+
+    }
+
+    return next();
+  },
+);
+```
+
+---
+
+`src\env.d.ts`:
+```
+declare namespace App {
+  interface Locals {
+    email: string;
+    name: string;
+    avatar_url: string;
+    userId: string;
+  }
+}
+```
+
+---
+
 `src\pages\api\auth\signin.ts`:
 ```
 // src/pages/api/auth/signin.ts
@@ -516,171 +787,26 @@ export const POST: APIRoute = async ({ request, redirect }) => {
 
 ---
 
-`src\lib\supabase.ts`:
+`src\types.ts`:
 ```
-import { createClient } from "@supabase/supabase-js";
-
-export const supabase = createClient(
-  import.meta.env.SUPABASE_URL,
-  import.meta.env.SUPABASE_ANON_KEY,
-  {
-    auth: {
-      flowType: "pkce",
-      autoRefreshToken: true,
-      detectSessionInUrl: false,
-      persistSession: true,
-    },
-  },
-);
-```
-
----
-
-`src\pages\api\auth\callback.ts`:
-```
-// src/pages/api/auth/callback.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
-
-export const GET: APIRoute = async ({ url, cookies, redirect }) => {
-  const authCode = url.searchParams.get("code");
-
-  if (!authCode) {
-    return new Response("No code provided", { status: 400 });
-  }
-
-  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
-
-  if (error) {
-    return new Response(error.message, { status: 500 });
-  }
-
-  const { access_token, refresh_token } = data.session;
-
-  cookies.set("sb-access-token", access_token, {
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-  cookies.set("sb-refresh-token", refresh_token, {
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-
-  // Create a new URL object for the /dashboard page
-  const redirectUrl = new URL('/dashboard', url.origin);
-
-  // Redirect to the cleaned URL
-  return redirect(redirectUrl.toString());
-};
-```
-
----
-
-`src\pages\competition\index.astro`:
-```
----
-// src/pages/competition/index.astro
-import Base from "../../layout/Base.astro";
-
----
-
-<Base title="Competition">
-  <section>
-    <h1>Competition</h1>
-    <p>Select a question to start:</p>
-    <ul>
-        <li><a href="/competition/1">Start Competition</a></li>
-    </ul>
-  </section>
-</Base>
-```
-
----
-
-`src\components\AuthForm.astro`:
-```
----
-// src/components/AuthForm.astro
-interface Props {
-  showProviderButtons?: boolean;
+// src/types.ts
+export interface Question {
+  id: number;
+  question: string;
+  fraction: string | null;
+  money: number | null;
+  case: string | null;
+  type: string | null;
+  order: number | null;
+  correctAnswerId?: number | null;
 }
 
-const { showProviderButtons = false } = Astro.props;
----
-
-{
-  showProviderButtons && (
-    <>
-      <p>Sign in with</p>
-      <form action="/api/auth/signin" method="post">
-        <button value="google" name="provider" type="submit">
-          Sign in with Google
-        </button>
-      </form>
-    </>
-  )
+export interface Answer {
+  id: number;
+  question_id: number;
+  answer: number;
+  is_correct: boolean;
 }
-```
-
----
-
-`src\pages\index.astro`:
-```
----
-// src/pages/index.astro
-import Base from "../layout/Base.astro";
-import { checkAndSetSession } from '../lib/auth';
-
-const isLoggedIn = await checkAndSetSession(Astro.cookies);
-
----
-
-<Base title="Home">
-  <h1>Welcome</h1>
-  {
-    isLoggedIn ? (
-      <p>
-        You are logged in. <a href="/dashboard">Go to Dashboard</a>
-      </p>
-    ) : (
-      <p>
-        <a href="/signin">Sign in</a> to access the dashboard.
-      </p>
-    )
-  }
-</Base>
-```
-
----
-
-`src\pages\signin.astro`:
-```
----
-// src/pages/signin.astro
-import Base from "../layout/Base.astro";
-import AuthForm from "../components/AuthForm.astro";
-const title = "Sign in";
-
----
-
-<Base title={title}>
-  <main>
-    <section>
-      <h1>{title}</h1>
-      <AuthForm showProviderButtons />
-    </section>
-  </main>
-</Base>
-```
-
----
-
-`.env`:
-```
-SUPABASE_URL=https://nbytvsctrjknlbemdfwe.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ieXR2c2N0cmprbmxiZW1kZndlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzMTA5MTgsImV4cCI6MjA1Mzg4NjkxOH0.llpjzwUPxba4pU_egjpDuVdX3K4Gtw9wPes82zCgTjI
 ```
 
 ---

@@ -1,7 +1,7 @@
 // src/middleware/index.ts
 import { defineMiddleware } from "astro:middleware";
 import micromatch from "micromatch";
-import { checkAndSetSession, setAuthCookies, clearAuthCookies } from "../lib/auth"; // Import setAuthCookies and clearAuthCookies
+import { checkAndSetSession, clearAuthCookies } from "../lib/auth"; // Import clearAuthCookies
 import { supabase } from "../lib/supabase";
 
 const protectedRoutes = [
@@ -29,9 +29,8 @@ export const onRequest = defineMiddleware(
     }
 
     if (micromatch.isMatch(url.pathname, protectedAPIRoutes)) {
-      const accessToken = cookies.get("sb-access-token");
       const refreshToken = cookies.get("sb-refresh-token");
-        console.log("Middleware: Checking API route:", url.pathname, accessToken, refreshToken); // Keep this log
+        console.log("Middleware: Checking API route:", url.pathname, refreshToken); // Keep this log
 
       if (!refreshToken) { // Only need to check refresh token
           return new Response(
@@ -55,10 +54,10 @@ export const onRequest = defineMiddleware(
             );
         }
 
-        //check and set cookies
-        if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
-            setAuthCookies(cookies, session.access_token, session.refresh_token);
-        }
+        // checkAndSetSession already handles the cookie refresh, so we *remove* the redundant check here:
+        // if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
+        //    setAuthCookies(cookies, session.access_token, session.refresh_token);
+        // }
       locals.userId = session.user.id; // Set locals.userId here! VERY IMPORTANT
 
     }

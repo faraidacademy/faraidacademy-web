@@ -1,6 +1,7 @@
  // src/pages/api/answers.ts
  import type { APIRoute } from "astro";
  import { supabase } from "../../lib/supabase";
+import { handleSupabaseError, handleRequestError } from "../../lib/apiHelpers";
 
  export const POST: APIRoute = async ({ request, locals, redirect }) => {
  console.log("API Route /api/answers: locals:", locals); // Keep this log
@@ -37,19 +38,11 @@
      .select();
 
      if (error) {
-     console.error("Supabase error:", error);
-     return new Response(
-         JSON.stringify({ error: "Failed to save answer" }),
-         { status: 500, headers: { 'Content-Type': 'application/json' } },
-     );
-     }
+        return handleSupabaseError(error, "Failed to save answer"); // Use the helper
+      }
 
      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
- } catch (error) {
-     console.error("Request error:", error);
-     return new Response(
-     JSON.stringify({ error: "Invalid request body" }),
-     { status: 400, headers: { 'Content-Type': 'application/json' } },
-     );
- }
+    } catch (error) {
+        return handleRequestError(error, "Invalid request body"); // Use new helper
+    }
  };
