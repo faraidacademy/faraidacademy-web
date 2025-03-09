@@ -1,12 +1,49 @@
 ---
 import "@fontsource-variable/eb-garamond";
 import { Icon } from "astro-icon/components";
+import { Image } from "astro:assets";
+
+interface Props {
+    isLoggedIn: boolean;
+}
+
+const { isLoggedIn } = Astro.props;
+const { avatar_url, name } = Astro.locals;
 ---
 
 <header>
     <Icon name="Logo" />
     <h1>FaraidAcademy</h1>
+    {
+        isLoggedIn ? (
+            avatar_url ? (
+                <a href="/dashboard">
+                    <Image
+                        class="avatar"
+                        src={avatar_url}
+                        alt={name ? `${name}'s avatar` : "User Avatar"}
+                        width={32}
+                        height={32}
+                        loading="lazy"
+                        format="webp"
+                    />
+                </a>
+            ) : (
+                <a href="/dashboard">Dashboard</a>
+            )
+        ) : (
+            <form action="/api/auth/signin" method="post">
+                <md-filled-button name="provider" value="google" type="submit">
+                    LOGIN
+                </md-filled-button>
+            </form>
+        )
+    }
 </header>
+
+<script>
+    import "material/button/filled-button";
+</script>
 
 <style>
     header {
@@ -15,8 +52,12 @@ import { Icon } from "astro-icon/components";
         align-items: center;
         gap: 0.3em;
         position: fixed;
-        top:0;
-        padding:1em;
+        top: 0;
+        padding: 1em;
+        justify-content: space-between;
+        width: 100%;
+        background-color: white;
+        z-index: 100;
     }
     h1 {
         font-family: "EB Garamond", serif;
@@ -25,6 +66,21 @@ import { Icon } from "astro-icon/components";
     }
 
     [data-icon="Logo"] {
-       font-size: 1.5em;
+        font-size: 1.5em;
+    }
+
+    header a {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .avatar {
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #ccc;
+    }
+
+    form {
+        font-family: inherit;
     }
 </style>

@@ -1,7 +1,7 @@
 ---
 import { Image } from "astro:assets";
 // Fetch school and phone from Astro.locals
-const { email, name, avatar_url, userId, createdAt, school, phone } = Astro.locals;
+const { email, name, avatar_url, createdAt, school, phone } = Astro.locals;
 
 function formatDate(dateString: string | undefined) {
   if (!dateString) {

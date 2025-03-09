@@ -1,23 +1,29 @@
 ---
 import Header from "../components/Header.astro";
 import "../styles/global.css";
+import { checkAndSetSession } from '../lib/auth'; // Import here
+
 interface Props {
   title: string;
 }
 
 const { title } = Astro.props;
+
+// Perform the login check HERE, in the layout
+const isLoggedIn = await checkAndSetSession(Astro.cookies);
+
 import '@fontsource-variable/open-sans';
 
 ---
 
 <html lang="en">
-  <Header></Header>
   <head>
     <meta charset="utf-8" />
     <title>{title}</title>
     <meta name="viewport" content="width=device-width" />
   </head>
   <body>
+    <Header isLoggedIn={isLoggedIn} />
     <slot />
   </body>
 </html>
