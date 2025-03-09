@@ -1,5 +1,4 @@
 ---
-// src/pages/competition/[id].astro
 import Base from "../../layout/Base.astro";
 import { supabase } from "../../lib/supabase";
 import type { Question, Answer } from "../../types";
@@ -14,7 +13,7 @@ const questionId = Number(id);
 
 const { data: questionData, error: questionError } = await supabase
   .from("questions")
-  .select("*")
+  .select("id, question, money, case")
   .eq("id", questionId)
   .single();
 
@@ -28,7 +27,7 @@ if (!questionData) {
 
 const { data: answersData, error: answersError } = await supabase
   .from("answers")
-  .select("*")
+  .select("id, question_id, answer")
   .eq("question_id", questionId);
 
 if (answersError) {
@@ -38,14 +37,7 @@ if (answersError) {
 const question: Question = questionData;
 const answers: Answer[] = answersData || [];
 
-const { count: totalQuestions, error: countError } = await supabase
-  .from("questions")
-  .select("*", { count: "exact", head: true });
-
-if (countError) {
-    return handleCountError(countError, "Error fetching total questions number");
-}
-const totalQuestionCount = totalQuestions ?? 0;
+const totalQuestionCount = 47;
 
 let userResult = undefined;
 
@@ -66,130 +58,123 @@ if (Astro.locals.userId) {
 ---
 
 <Base title={`Question ${questionId}`}>
-    <section data-question-id={questionId}>
-        <h1>Question {questionId}</h1>
-        <p>Case: {question.case}</p>
-        {question.money && <p>Money: {question.money}</p>}
-        <p>{question.question}</p>
-        {question.fraction && <p>Fraction: {question.fraction}</p>}
+  <section data-question-id={questionId}>
+      <h1>Question {questionId}</h1>
+      <p>Case: {question.case}</p>
+      {question.money && <p>Money: {question.money}</p>}
+      <p>{question.question}</p>
 
-        <h2>Answers</h2>
-        <p>Status: <span id="status-indicator">unsaved</span></p>
-        <ul>
-            {
-              answers.map((answer) => (
-                <li>
-                  <button
-                    data-answer-id={answer.id}
-                    class={`answer-button ${userResult === answer.id ? 'selected' : ''}`}
-                  >
-                    {answer.answer}
-                  </button>
-                </li>
-              ))
-            }
-            <li>
-              <button data-answer-id="null" class={`answer-button ${userResult === null ? 'selected' : ''}`}>
-                None of the Above
-              </button>
-            </li>
-          </ul>
+      <h2>Answers</h2>
+      <p>Status: <span id="status-indicator">{userResult ? "saved" : "unsaved"}</span></p>
+      <ul>
+          {
+            answers.map((answer) => (
+              <li>
+                <button
+                  data-answer-id={answer.id}
+                  class={`answer-button ${userResult === answer.id ? 'selected' : ''}`}
+                >
+                  {answer.answer}
+                </button>
+              </li>
+            ))
+          }
+          <li>
+            <button data-answer-id="null" class={`answer-button ${userResult === null ? 'selected' : ''}`}>
+              None of the Above
+            </button>
+          </li>
+        </ul>
 
         <div class="navigation">
-            {
-                questionId > 1 && (
-                    <a href={`/competition/${questionId - 1}`}>Previous</a>
-                )
-            }
-            <span>Question: {questionId} / {totalQuestionCount}</span>
-            {
-                questionId < totalQuestionCount && (
-                    <a href={`/competition/${questionId + 1}`}>Next</a>
-                )
-            }
-        </div>
-    </section>
+          {questionId > 1 && (
+              <a href={`/competition/${questionId - 1}`}>Previous</a>
+          )}
+          {questionId < totalQuestionCount && (
+              <a href={`/competition/${questionId + 1}`}>Next</a>
+          )}
+      </div>
+  </section>
 </Base>
 
 <script>
-    const answerButtons = document.querySelectorAll<HTMLElement>(".answer-button");
-    const statusIndicator = document.getElementById("status-indicator")!;
+  const answerButtons = document.querySelectorAll<HTMLElement>(".answer-button");
+  const statusIndicator = document.getElementById("status-indicator")!;
 
-    // Get questionId from the data attribute.
-    const sectionElement = document.querySelector('section');
-    const questionId = sectionElement ? parseInt(sectionElement.dataset.questionId || '', 10) : null;
+  const sectionElement = document.querySelector('section');
+  const questionId = sectionElement ? parseInt(sectionElement.dataset.questionId || '', 10) : null;
 
-    // Helper function for handling fetch errors
-    async function handleFetchError(response: Response) {
-        if (!response.ok) {
-            const errorData = await response.json();
-            const errorMessage = errorData.error || "Failed to save answer";
-            throw new Error(errorMessage);
-        }
-    }
+  async function handleFetchError(response: Response) {
+      if (!response.ok) {
+          const errorData = await response.json();
+          const errorMessage = errorData.error || "Failed to save answer";
+          throw new Error(errorMessage);
+      }
+  }
 
-    answerButtons.forEach((button) => {
-        button.addEventListener("click", async () => {
-            answerButtons.forEach((b) => b.classList.remove("selected"));
-            button.classList.add("selected");
-            statusIndicator.textContent = "unsaved";
+  answerButtons.forEach((button) => {
+      button.addEventListener("click", async () => {
+          answerButtons.forEach((b) => b.classList.remove("selected"));
+          button.classList.add("selected");
+          statusIndicator.textContent = "unsaved";
 
-            const answerId = button.dataset.answerId;
-            const parsedAnswerId = answerId === 'null' ? null : (answerId ? parseInt(answerId, 10) : null);
+          const answerId = button.dataset.answerId;
+          const parsedAnswerId = answerId === 'null' ? null : (answerId ? parseInt(answerId, 10) : null);
 
-            if (questionId === null) {
-                console.error("Question ID not found!");
-                statusIndicator.textContent = "error";
-                return;
-            }
+          if (questionId === null) {
+              console.error("Question ID not found!");
+              statusIndicator.textContent = "error";
+              return;
+          }
 
-            if (parsedAnswerId === null && answerId !== 'null') {
-                console.error("Invalid answer ID:", answerId);
-                statusIndicator.textContent = "error";
-                return;
-            }
+          if (parsedAnswerId === null && answerId !== 'null') {
+              console.error("Invalid answer ID:", answerId);
+              statusIndicator.textContent = "error";
+              return;
+          }
 
-            try {
-                const response = await fetch("/api/answers", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        questionId: questionId,
-                        answerId: parsedAnswerId,
-                    }),
-                });
+          try {
+              const response = await fetch("/api/answers", {
+                  method: "POST",
+                  headers: {
+                      "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                      questionId: questionId,
+                      answerId: parsedAnswerId,
+                  }),
+              });
 
-                await handleFetchError(response);
-                statusIndicator.textContent = "saved";
+              await handleFetchError(response);
+              statusIndicator.textContent = "saved";
 
-            } catch (error) {
-                console.error("Error saving answer:", error);
-                statusIndicator.textContent = "error";
-            }
-        });
-    });
+          } catch (error) {
+              console.error("Error saving answer:", error);
+              statusIndicator.textContent = "error";
+          }
+      });
+  });
 </script>
+
 <style>
-    .navigation {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 2rem;
-    }
+  .navigation {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 2rem;
+  }
 
-    .answer-button {
-        margin-bottom: 0.5rem;
-        padding: 0.5rem 1rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        background-color: #f0f0f0;
-        cursor: pointer;
-    }
+  .answer-button {
+      margin-bottom: 0.5rem;
+      padding: 0.5rem 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #f0f0f0;
+      cursor: pointer;
+  }
 
-    .answer-button.selected {
-        background-color: #a0c4ff;
-        border-color: #68a0ff;
-        color: black;
-    }
+  .answer-button.selected {
+      background-color: #a0c4ff;
+      border-color: #68a0ff;
+      color: black;
+  }
 </style>
