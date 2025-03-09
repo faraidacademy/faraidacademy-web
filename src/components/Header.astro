@@ -33,8 +33,8 @@ const { avatar_url, name } = Astro.locals;
             )
         ) : (
             <form action="/api/auth/signin" method="post">
-                <md-filled-button name="provider" value="google" type="submit">
-                    LOGIN
+                <md-filled-button class="button" name="provider" value="google" type="submit">
+                    Login
                 </md-filled-button>
             </form>
         )
@@ -47,6 +47,7 @@ const { avatar_url, name } = Astro.locals;
 
 <style>
     header {
+        font-family: "EB Garamond Variable", serif;
         display: flex;
         flex-direction: row;
         align-items: center;
@@ -60,7 +61,6 @@ const { avatar_url, name } = Astro.locals;
         z-index: 100;
     }
     h1 {
-        font-family: "EB Garamond", serif;
         font-weight: 500;
         font-size: 1em;
     }
@@ -80,7 +80,7 @@ const { avatar_url, name } = Astro.locals;
         border: 2px solid #ccc;
     }
 
-    form {
-        font-family: inherit;
-    }
+.button{
+    font-family: 'Open Sans', sans-serif;
+}
 </style>

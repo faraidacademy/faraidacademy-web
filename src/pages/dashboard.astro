@@ -4,7 +4,7 @@
 import Base from "../layout/Base.astro";
 import Form from "../components/Form.astro";
 import Profile from "../components/Profile.astro";
-const { name, school, phone } = Astro.locals; // Get school too!
+const { name, school, phone } = Astro.locals;
 ---
 
 <Base title="Dashboard">
@@ -18,7 +18,7 @@ const { name, school, phone } = Astro.locals; // Get school too!
   import "material/dialog/dialog";
 
   const editProfileButton = document.getElementById("edit-profile-button");
-  const dialog = document.querySelector("#edit-profile") as any; // Type assertion!
+  const dialog = document.querySelector("#edit-profile") as any;
 
   if (editProfileButton && dialog) {
     editProfileButton.addEventListener('click', () => {
@@ -26,3 +26,9 @@ const { name, school, phone } = Astro.locals; // Get school too!
     });
   }
 </script>
+
+<style>
+  md-text-button{
+    font-family: 'Open Sans Variable', sans-serif;
+  }
+</style>
