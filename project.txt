@@ -1,5 +1,92 @@
 ---
 
+`src\types.ts`:
+```
+// src/types.ts
+export interface Question {
+  id: number;
+  question: string;
+  money: number | null;
+  case: string | null;
+}
+
+export interface Answer {
+  id: number;
+  question_id: number;
+  answer: number;
+}
+```
+
+---
+
+`astro.config.mjs`:
+```
+import { defineConfig } from 'astro/config';
+import netlify from '@astrojs/netlify';
+
+export default defineConfig({
+  image: {
+    domains: ["googleusercontent.com"],
+  },
+  output: 'server',
+  adapter: netlify({
+    edgeMiddleware: false,
+  }),
+});
+```
+
+---
+
+`src\components\Profile.astro`:
+```
+---
+import { Image } from "astro:assets";
+// Fetch school and phone from Astro.locals
+const { email, name, avatar_url, userId, createdAt, school, phone } = Astro.locals;
+
+function formatDate(dateString: string | undefined) {
+  if (!dateString) {
+    return "Unknown";
+  }
+  const date = new Date(dateString);
+  return date.toLocaleDateString('id-ID', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+---
+
+<section>
+    {
+        avatar_url && (
+            <Image
+            class="avatar"
+                src={avatar_url}
+                alt={name ? `${name}'s avatar` : "User Avatar"}
+                width={64}
+                height={64}
+            />
+        )
+    }
+    <p>{name || email}</p>
+    {school && <p>Universitas/Sekolah: {school}</p>}
+    {phone && <p>Nomor Telefon: {phone}</p>}
+    <p>Terdaftar: {formatDate(createdAt)}</p>
+    <a href="/">Halaman Utama</a>
+    <a href="/api/auth/signout">Sign out</a>
+</section>
+
+<style>
+    .avatar{
+        border-radius:50%;
+    }
+</style>
+```
+
+---
+
 `src\pages\index.astro`:
 ```
 ---
@@ -29,10 +116,301 @@ const isLoggedIn = await checkAndSetSession(Astro.cookies);
 
 ---
 
+`tsconfig.json`:
+```
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"]
+}
+
+```
+
+---
+
+`src\lib\supabase.ts`:
+```
+// src/lib/supabase.ts
+import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  import.meta.env.SUPABASE_URL,
+  import.meta.env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      flowType: "pkce",
+      autoRefreshToken: true,
+      persistSession: true,
+    },
+  },
+);
+```
+
+---
+
+`src\lib\auth.ts`:
+```
+// src/lib/auth.ts
+import type { AstroCookies } from "astro";
+import { supabase } from "./supabase";
+
+export function setAuthCookies(
+  cookies: AstroCookies,
+  access_token: string,
+  refresh_token: string,
+) {
+  cookies.set("sb-access-token", access_token, {
+    sameSite: "strict",
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+  cookies.set("sb-refresh-token", refresh_token, {
+    sameSite: "strict",
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+}
+
+export function clearAuthCookies(cookies: AstroCookies) {
+  cookies.delete("sb-access-token", { path: "/" });
+  cookies.delete("sb-refresh-token", { path: "/" });
+}
+
+export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Locals) {
+    const refreshToken = cookies.get("sb-refresh-token");
+
+    if (!refreshToken) {
+        return false;
+    }
+
+    const { data: { session }, error } = await supabase.auth.getSession();
+
+    if (error || !session) {
+        clearAuthCookies(cookies);
+        return false;
+    }
+
+    if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
+        setAuthCookies(cookies, session.access_token, session.refresh_token);
+    }
+
+
+    if (locals && session.user) {
+        locals.email = session.user.email ?? "";
+        locals.name = session.user.user_metadata?.name ?? "";
+        locals.avatar_url = session.user.user_metadata?.avatar_url ?? "";
+        locals.userId = session.user.id;
+        locals.createdAt = session.user.created_at;
+        locals.school = session.user.user_metadata?.school ?? ""; // NEW
+        locals.phone = session.user.user_metadata?.phone ?? "";
+    }
+
+    return true;
+}
+```
+
+---
+
+`src\pages\api\auth\signout.ts`:
+```
+// src/pages/api/auth/signout.ts
+import type { APIRoute } from "astro";
+import { clearAuthCookies } from "../../../lib/auth"; // Import
+
+export const GET: APIRoute = async ({ cookies, redirect }) => {
+  clearAuthCookies(cookies); // Use helper
+  return redirect("/signin");
+};
+```
+
+---
+
+`src\components\Form.astro`:
+```
+---
+// src/components/Form.astro
+interface Props {
+  userName?: string;
+  userSchool?: string;
+  userPhone?: string;
+}
+
+const { userName = "", userSchool = "", userPhone = "" } = Astro.props;
+---
+
+<md-dialog class="dialog" id="edit-profile">
+
+    <div slot="headline">Edit Profil</div>
+
+    <form slot="content" id="form-id" method="dialog">
+        <md-outlined-text-field label="Nama Lengkap" required minlength="4" value={userName} name="name"></md-outlined-text-field>
+        <md-outlined-text-field label="Universitas/Sekolah" required minlength="4" value={userSchool} name="school"></md-outlined-text-field>
+        <md-outlined-text-field label="Nomor Telefon" required minlength="4" type="tel" value={userPhone} name="phone"></md-outlined-text-field>
+    </form>
+
+    <div slot="actions">
+        <md-filled-button form="form-id" id="submit-button">SIMPAN</md-filled-button>
+    </div>
+</md-dialog>
+
+<script>
+    import "material/textfield/outlined-text-field";
+    import "material/button/filled-button";
+    import "material/dialog/dialog";
+
+    const submitButton = document.getElementById("submit-button");
+
+    const submitProfileForm = async () => {
+        const form = document.getElementById("form-id") as HTMLFormElement;
+        const name = (form.querySelector('[name="name"]') as HTMLInputElement).value;
+        const school = (form.querySelector('[name="school"]') as HTMLInputElement).value;
+        const phone = (form.querySelector('[name="phone"]') as HTMLInputElement).value;
+
+        try {
+            const response = await fetch("/api/profile", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ name, school, phone }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                alert(`Error updating profile: ${errorData.error} - ${errorData.details}`);
+                return;
+            }
+
+            const dialog = document.querySelector("#edit-profile") as any;
+            dialog.close = true;
+            window.location.reload();
+
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            alert("An unexpected error occurred.");
+        }
+    };
+
+    if (submitButton) {
+        submitButton.addEventListener('click', submitProfileForm);
+    }
+</script>
+
+<style>
+    .dialog {
+        display: flex;
+        flex-direction: column;
+        margin: auto;
+        height:min-content;
+
+    }
+
+    #form-id {
+        display: flex;
+        flex-direction: column;
+        gap:1em;
+    }
+</style>
+```
+
+---
+
+`src\pages\signin.astro`:
+```
+---
+// src/pages/signin.astro
+import Base from "../layout/Base.astro";
+import AuthForm from "../components/AuthForm.astro";
+const title = "Sign in";
+
+---
+
+<Base title={title}>
+  <main>
+    <section>
+      <h1>{title}</h1>
+      <AuthForm showProviderButtons />
+    </section>
+  </main>
+</Base>
+```
+
+---
+
+`src\middleware\index.ts`:
+```
+// src/middleware/index.ts
+import { defineMiddleware } from "astro:middleware";
+import micromatch from "micromatch";
+import { checkAndSetSession, clearAuthCookies } from "../lib/auth";
+import { supabase } from "../lib/supabase";
+
+const protectedRoutes = [
+    "/dashboard(|/)",
+    "/competition",
+    "/competition/**",
+];
+const redirectRoutes = ["/signin(|/)", "/register(|/)"];
+const protectedAPIRoutes = ["/api/questions(|/)", "/api/answers(|/)", "/api/profile(|/)"];
+
+export const onRequest = defineMiddleware(
+  async ({ locals, url, cookies, redirect }, next) => {
+    if (micromatch.isMatch(url.pathname, protectedRoutes)) {
+      const isLoggedIn = await checkAndSetSession(cookies, locals);
+      if (!isLoggedIn) {
+        return redirect("/signin");
+      }
+    }
+
+    if (micromatch.isMatch(url.pathname, redirectRoutes)) {
+      const isLoggedIn = await checkAndSetSession(cookies);
+      if (isLoggedIn) {
+        return redirect("/dashboard");
+      }
+    }
+
+    if (micromatch.isMatch(url.pathname, protectedAPIRoutes)) {
+      const refreshToken = cookies.get("sb-refresh-token");
+        console.log("Middleware: Checking API route:", url.pathname, refreshToken);
+
+      if (!refreshToken) {
+          return new Response(
+            JSON.stringify({
+              error: "Unauthorized",
+            }),
+            { status: 401, headers: { "Content-Type": "application/json" } },
+          );
+      }
+
+      const { data: { session }, error } = await supabase.auth.getSession();
+        console.log("Middleware: session:", session, "error:", error);
+
+        if (error || !session) {
+            clearAuthCookies(cookies);
+            return new Response(
+                JSON.stringify({
+                    error: "Unauthorized",
+                }),
+                { status: 401, headers: { "Content-Type": "application/json" } },
+            );
+        }
+
+      locals.userId = session.user.id;
+
+    }
+
+    return next();
+  },
+);
+```
+
+---
+
 `src\pages\competition\[id].astro`:
 ```
 ---
-// src/pages/competition/[id].astro
 import Base from "../../layout/Base.astro";
 import { supabase } from "../../lib/supabase";
 import type { Question, Answer } from "../../types";
@@ -47,7 +425,7 @@ const questionId = Number(id);
 
 const { data: questionData, error: questionError } = await supabase
   .from("questions")
-  .select("*")
+  .select("id, question, money, case")
   .eq("id", questionId)
   .single();
 
@@ -61,7 +439,7 @@ if (!questionData) {
 
 const { data: answersData, error: answersError } = await supabase
   .from("answers")
-  .select("*")
+  .select("id, question_id, answer")
   .eq("question_id", questionId);
 
 if (answersError) {
@@ -71,14 +449,7 @@ if (answersError) {
 const question: Question = questionData;
 const answers: Answer[] = answersData || [];
 
-const { count: totalQuestions, error: countError } = await supabase
-  .from("questions")
-  .select("*", { count: "exact", head: true });
-
-if (countError) {
-    return handleCountError(countError, "Error fetching total questions number");
-}
-const totalQuestionCount = totalQuestions ?? 0;
+const totalQuestionCount = 47;
 
 let userResult = undefined;
 
@@ -99,133 +470,372 @@ if (Astro.locals.userId) {
 ---
 
 <Base title={`Question ${questionId}`}>
-    <section data-question-id={questionId}>
-        <h1>Question {questionId}</h1>
-        <p>Case: {question.case}</p>
-        {question.money && <p>Money: {question.money}</p>}
-        <p>{question.question}</p>
-        {question.fraction && <p>Fraction: {question.fraction}</p>}
+  <section data-question-id={questionId}>
+      <h1>Question {questionId}</h1>
+      <p>Case: {question.case}</p>
+      {question.money && <p>Money: {question.money}</p>}
+      <p>{question.question}</p>
 
-        <h2>Answers</h2>
-        <p>Status: <span id="status-indicator">unsaved</span></p>
-        <ul>
-            {
-              answers.map((answer) => (
-                <li>
-                  <button
-                    data-answer-id={answer.id}
-                    class={`answer-button ${userResult === answer.id ? 'selected' : ''}`}
-                  >
-                    {answer.answer}
-                  </button>
-                </li>
-              ))
-            }
-            <li>
-              <button data-answer-id="null" class={`answer-button ${userResult === null ? 'selected' : ''}`}>
-                None of the Above
-              </button>
-            </li>
-          </ul>
+      <h2>Answers</h2>
+      <p>Status: <span id="status-indicator">{userResult ? "saved" : "unsaved"}</span></p>
+      <ul>
+          {
+            answers.map((answer) => (
+              <li>
+                <button
+                  data-answer-id={answer.id}
+                  class={`answer-button ${userResult === answer.id ? 'selected' : ''}`}
+                >
+                  {answer.answer}
+                </button>
+              </li>
+            ))
+          }
+          <li>
+            <button data-answer-id="null" class={`answer-button ${userResult === null ? 'selected' : ''}`}>
+              None of the Above
+            </button>
+          </li>
+        </ul>
 
         <div class="navigation">
-            {
-                questionId > 1 && (
-                    <a href={`/competition/${questionId - 1}`}>Previous</a>
-                )
-            }
-            <span>Question: {questionId} / {totalQuestionCount}</span>
-            {
-                questionId < totalQuestionCount && (
-                    <a href={`/competition/${questionId + 1}`}>Next</a>
-                )
-            }
-        </div>
-    </section>
+          {questionId > 1 && (
+              <a href={`/competition/${questionId - 1}`}>Previous</a>
+          )}
+          {questionId < totalQuestionCount && (
+              <a href={`/competition/${questionId + 1}`}>Next</a>
+          )}
+      </div>
+  </section>
 </Base>
 
 <script>
-    const answerButtons = document.querySelectorAll<HTMLElement>(".answer-button");
-    const statusIndicator = document.getElementById("status-indicator")!;
+  const answerButtons = document.querySelectorAll<HTMLElement>(".answer-button");
+  const statusIndicator = document.getElementById("status-indicator")!;
 
-    // Get questionId from the data attribute.
-    const sectionElement = document.querySelector('section');
-    const questionId = sectionElement ? parseInt(sectionElement.dataset.questionId || '', 10) : null;
+  const sectionElement = document.querySelector('section');
+  const questionId = sectionElement ? parseInt(sectionElement.dataset.questionId || '', 10) : null;
 
-    // Helper function for handling fetch errors
-    async function handleFetchError(response: Response) {
-        if (!response.ok) {
-            const errorData = await response.json();
-            const errorMessage = errorData.error || "Failed to save answer";
-            throw new Error(errorMessage);
-        }
-    }
+  async function handleFetchError(response: Response) {
+      if (!response.ok) {
+          const errorData = await response.json();
+          const errorMessage = errorData.error || "Failed to save answer";
+          throw new Error(errorMessage);
+      }
+  }
 
-    answerButtons.forEach((button) => {
-        button.addEventListener("click", async () => {
-            answerButtons.forEach((b) => b.classList.remove("selected"));
-            button.classList.add("selected");
-            statusIndicator.textContent = "unsaved";
+  answerButtons.forEach((button) => {
+      button.addEventListener("click", async () => {
+          answerButtons.forEach((b) => b.classList.remove("selected"));
+          button.classList.add("selected");
+          statusIndicator.textContent = "unsaved";
 
-            const answerId = button.dataset.answerId;
-            const parsedAnswerId = answerId === 'null' ? null : (answerId ? parseInt(answerId, 10) : null);
+          const answerId = button.dataset.answerId;
+          const parsedAnswerId = answerId === 'null' ? null : (answerId ? parseInt(answerId, 10) : null);
 
-            if (questionId === null) {
-                console.error("Question ID not found!");
-                statusIndicator.textContent = "error";
-                return;
-            }
+          if (questionId === null) {
+              console.error("Question ID not found!");
+              statusIndicator.textContent = "error";
+              return;
+          }
 
-            if (parsedAnswerId === null && answerId !== 'null') {
-                console.error("Invalid answer ID:", answerId);
-                statusIndicator.textContent = "error";
-                return;
-            }
+          if (parsedAnswerId === null && answerId !== 'null') {
+              console.error("Invalid answer ID:", answerId);
+              statusIndicator.textContent = "error";
+              return;
+          }
 
-            try {
-                const response = await fetch("/api/answers", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        questionId: questionId,
-                        answerId: parsedAnswerId,
-                    }),
-                });
+          try {
+              const response = await fetch("/api/answers", {
+                  method: "POST",
+                  headers: {
+                      "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                      questionId: questionId,
+                      answerId: parsedAnswerId,
+                  }),
+              });
 
-                await handleFetchError(response);
-                statusIndicator.textContent = "saved";
+              await handleFetchError(response);
+              statusIndicator.textContent = "saved";
 
-            } catch (error) {
-                console.error("Error saving answer:", error);
-                statusIndicator.textContent = "error";
-            }
-        });
-    });
+          } catch (error) {
+              console.error("Error saving answer:", error);
+              statusIndicator.textContent = "error";
+          }
+      });
+  });
 </script>
+
 <style>
-    .navigation {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 2rem;
-    }
+  .navigation {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 2rem;
+  }
 
-    .answer-button {
-        margin-bottom: 0.5rem;
-        padding: 0.5rem 1rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        background-color: #f0f0f0;
-        cursor: pointer;
-    }
+  .answer-button {
+      margin-bottom: 0.5rem;
+      padding: 0.5rem 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #f0f0f0;
+      cursor: pointer;
+  }
 
-    .answer-button.selected {
-        background-color: #a0c4ff;
-        border-color: #68a0ff;
-        color: black;
-    }
+  .answer-button.selected {
+      background-color: #a0c4ff;
+      border-color: #68a0ff;
+      color: black;
+  }
 </style>
+```
+
+---
+
+`src\components\AuthForm.astro`:
+```
+---
+// src/components/AuthForm.astro
+interface Props {
+  showProviderButtons?: boolean;
+}
+
+const { showProviderButtons = false } = Astro.props;
+---
+
+{
+  showProviderButtons && (
+    <>
+      <p>Sign in with</p>
+      <form action="/api/auth/signin" method="post">
+        <button value="google" name="provider" type="submit">
+          Sign in with Google
+        </button>
+      </form>
+    </>
+  )
+}
+```
+
+---
+
+`src\lib\apiHelpers.ts`:
+```
+// src/lib/apiHelpers.ts
+import type { PostgrestError } from "@supabase/supabase-js";
+import { AuthError } from "@supabase/supabase-js";
+
+export function handleSupabaseError(error: PostgrestError, message: string) {
+  console.error(message, error);
+  return new Response(
+    JSON.stringify({
+      error: message,
+      details: error.message,
+    }),
+    { status: 500, headers: { "Content-Type": "application/json" } },
+  );
+}
+
+export function handleCountError(error: any, message: string) {
+    console.error(message, error);
+    return new Response(
+        JSON.stringify({
+            error: message,
+            details: error.message || "Unknown error",
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+}
+
+export function handleRequestError(error: any, message: string) {
+    console.error(message, error);
+    return new Response(
+        JSON.stringify({
+          error: message,
+          details: error.message || 'Invalid Request',
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+export function handleAuthError(error: AuthError, message: string) {
+  console.error(message, error);
+  return new Response(
+    JSON.stringify({
+      error: message,
+      details: error.message,
+    }),
+    { status: 500, headers: { "Content-Type": "application/json" } },
+  );
+}
+```
+
+---
+
+`src\pages\api\profile.ts`:
+```
+// src/pages/api/profile.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../lib/supabase";
+import { handleRequestError, handleAuthError } from "../../lib/apiHelpers";
+
+export const POST: APIRoute = async ({ request, locals }) => {
+  if (!locals.userId) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  try {
+    const { name, school, phone } = await request.json();
+
+    if (typeof name !== 'string' || name.length < 4) {
+      return handleRequestError(new Error("Invalid name"), "Name must be at least 4 characters");
+    }
+    if (typeof school !== 'string' || school.length < 4) {
+      return handleRequestError(new Error("Invalid school"), "School must be at least 4 characters");
+    }
+    if (typeof phone !== 'string' || phone.length < 4) {
+      return handleRequestError(new Error("Invalid phone"), "Phone must be at least 4 characters");
+    }
+    // Update user metadata
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        name: name,
+        school: school,
+        phone: phone,
+      },
+    });
+
+    if (error) {
+      return handleAuthError(error, "Failed to update profile");
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+     return handleRequestError(error, "Invalid request body");
+  }
+};
+```
+
+---
+
+`src\pages\api\auth\signin.ts`:
+```
+// src/pages/api/auth/signin.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../../lib/supabase";
+import type { Provider } from "@supabase/supabase-js";
+
+export const POST: APIRoute = async ({ request, redirect }) => {
+  const formData = await request.formData();
+  const provider = formData.get("provider")?.toString();
+
+  if (provider) {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: provider as Provider,
+      options: {
+        redirectTo: import.meta.env.DEV
+          ? "http://localhost:4321/api/auth/callback"
+          : "https://faraidacademy.netlify.app/api/auth/callback",
+      },
+    });
+
+    if (error) {
+      return new Response(error.message, { status: 500 });
+    }
+
+    return redirect(data.url);
+  }
+
+  return new Response("Provider required", { status: 400 });
+};
+```
+
+---
+
+`src\pages\competition\index.astro`:
+```
+---
+// src/pages/competition/index.astro
+import Base from "../../layout/Base.astro";
+
+---
+
+<Base title="Competition">
+  <section>
+    <h1>Competition</h1>
+    <p>Select a question to start:</p>
+    <ul>
+        <li><a href="/competition/1">Start Competition</a></li>
+    </ul>
+  </section>
+</Base>
+```
+
+---
+
+`src\pages\api\auth\callback.ts`:
+```
+// src/pages/api/auth/callback.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../../lib/supabase";
+
+export const GET: APIRoute = async ({ url, cookies, redirect }) => {
+  const authCode = url.searchParams.get("code");
+
+  if (!authCode) {
+    return new Response("No code provided", { status: 400 });
+  }
+
+  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+
+  if (error) {
+    return new Response(error.message, { status: 500 });
+  }
+
+  const { access_token, refresh_token } = data.session;
+
+  cookies.set("sb-access-token", access_token, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+  cookies.set("sb-refresh-token", refresh_token, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+
+  // Create a new URL object for the /dashboard page
+  const redirectUrl = new URL('/dashboard', url.origin);
+
+  // Redirect to the cleaned URL
+  return redirect(redirectUrl.toString());
+};
+```
+
+---
+
+`src\env.d.ts`:
+```
+declare namespace App {
+  interface Locals {
+    email: string;
+    name: string;
+    avatar_url: string;
+    userId: string;
+    createdAt: string;
+    school: string | undefined;
+    phone: string | undefined;
+  }
+}
 ```
 
 ---
@@ -331,302 +941,36 @@ export const POST: APIRoute = async () => {
 
 ---
 
-`src\pages\api\auth\signout.ts`:
-```
-// src/pages/api/auth/signout.ts
-import type { APIRoute } from "astro";
-import { clearAuthCookies } from "../../../lib/auth"; // Import
-
-export const GET: APIRoute = async ({ cookies, redirect }) => {
-  clearAuthCookies(cookies); // Use helper
-  return redirect("/signin");
-};
-```
-
----
-
-`src\types.ts`:
-```
-// src/types.ts
-export interface Question {
-  id: number;
-  question: string;
-  fraction: string | null;
-  money: number | null;
-  case: string | null;
-  type: string | null;
-  order: number | null;
-  correctAnswerId?: number | null;
-}
-
-export interface Answer {
-  id: number;
-  question_id: number;
-  answer: number;
-  is_correct: boolean;
-}
-```
-
----
-
-`src\pages\api\auth\callback.ts`:
-```
-// src/pages/api/auth/callback.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
-
-export const GET: APIRoute = async ({ url, cookies, redirect }) => {
-  const authCode = url.searchParams.get("code");
-
-  if (!authCode) {
-    return new Response("No code provided", { status: 400 });
-  }
-
-  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
-
-  if (error) {
-    return new Response(error.message, { status: 500 });
-  }
-
-  const { access_token, refresh_token } = data.session;
-
-  cookies.set("sb-access-token", access_token, {
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-  cookies.set("sb-refresh-token", refresh_token, {
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-
-  // Create a new URL object for the /dashboard page
-  const redirectUrl = new URL('/dashboard', url.origin);
-
-  // Redirect to the cleaned URL
-  return redirect(redirectUrl.toString());
-};
-```
-
----
-
-`astro.config.mjs`:
-```
-import { defineConfig } from 'astro/config';
-import netlify from '@astrojs/netlify';
-
-export default defineConfig({
-  image: {
-    domains: ["googleusercontent.com"],
-  },
-  output: 'server',
-  adapter: netlify({
-    edgeMiddleware: false,
-  }),
-});
-```
-
----
-
-`src\lib\apiHelpers.ts`:
-```
-// src/lib/apiHelpers.ts
-import type { PostgrestError } from "@supabase/supabase-js";
-
-export function handleSupabaseError(error: PostgrestError, message: string) {
-  console.error(message, error);
-  return new Response(
-    JSON.stringify({
-      error: message,
-      details: error.message, // Include the specific error message
-    }),
-    { status: 500, headers: { "Content-Type": "application/json" } },
-  );
-}
-
-export function handleCountError(error: any, message: string) {
-    console.error(message, error);
-    return new Response(
-        JSON.stringify({
-            error: message,
-            details: error.message || "Unknown error",
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
-}
-
-export function handleRequestError(error: any, message: string) {
-    console.error(message, error);
-    return new Response(
-        JSON.stringify({
-          error: message,
-          details: error.message || 'Invalid Request',
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-```
-
----
-
-`src\components\Form.astro`:
+`src\pages\dashboard.astro`:
 ```
 ---
-// src/components/TestForm.astro
+// src/pages/dashboard.astro
+
+import Base from "../layout/Base.astro";
+import Form from "../components/Form.astro";
+import Profile from "../components/Profile.astro";
+const { name, school, phone } = Astro.locals; // Get school too!
 ---
 
-<form>
-    <md-outlined-text-field label="Name" required minlength="4"
-    ></md-outlined-text-field>
-    <md-filled-button>Submit</md-filled-button>
-</form>
+<Base title="Dashboard">
+  <Profile />
+  <Form userName={name} userSchool={school} userPhone={phone} />
+  <md-text-button id="edit-profile-button">EDIT PROFIL</md-text-button>
+</Base>
 
 <script>
-    import "material/textfield/outlined-text-field";
-    import "material/button/filled-button";
-</script>
+  import "material/button/text-button";
+  import "material/dialog/dialog";
 
-```
+  const editProfileButton = document.getElementById("edit-profile-button");
+  const dialog = document.querySelector("#edit-profile") as any; // Type assertion!
 
----
-
-`src\lib\supabase.ts`:
-```
-// src/lib/supabase.ts
-import { createClient } from "@supabase/supabase-js";
-
-export const supabase = createClient(
-  import.meta.env.SUPABASE_URL,
-  import.meta.env.SUPABASE_ANON_KEY,
-  {
-    auth: {
-      flowType: "pkce",
-      autoRefreshToken: true,
-      persistSession: true,
-    },
-  },
-);
-```
-
----
-
-`tsconfig.json`:
-```
-{
-  "extends": "astro/tsconfigs/strict",
-  "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist"]
-}
-
-```
-
----
-
-`src\env.d.ts`:
-```
-declare namespace App {
-  interface Locals {
-    email: string;
-    name: string;
-    avatar_url: string;
-    userId: string;
+  if (editProfileButton && dialog) {
+    editProfileButton.addEventListener('click', () => {
+      dialog.open = true;
+    });
   }
-}
-```
-
----
-
-`src\pages\competition\index.astro`:
-```
----
-// src/pages/competition/index.astro
-import Base from "../../layout/Base.astro";
-
----
-
-<Base title="Competition">
-  <section>
-    <h1>Competition</h1>
-    <p>Select a question to start:</p>
-    <ul>
-        <li><a href="/competition/1">Start Competition</a></li>
-    </ul>
-  </section>
-</Base>
-```
-
----
-
-`src\middleware\index.ts`:
-```
-// src/middleware/index.ts
-import { defineMiddleware } from "astro:middleware";
-import micromatch from "micromatch";
-import { checkAndSetSession, clearAuthCookies } from "../lib/auth"; // Import clearAuthCookies
-import { supabase } from "../lib/supabase";
-
-const protectedRoutes = [
-    "/dashboard(|/)",
-    "/competition",
-    "/competition/**",
-];
-const redirectRoutes = ["/signin(|/)", "/register(|/)"];
-const protectedAPIRoutes = ["/api/questions(|/)", "/api/answers(|/)"];
-
-export const onRequest = defineMiddleware(
-  async ({ locals, url, cookies, redirect }, next) => {
-    if (micromatch.isMatch(url.pathname, protectedRoutes)) {
-      const isLoggedIn = await checkAndSetSession(cookies, locals);
-      if (!isLoggedIn) {
-        return redirect("/signin");
-      }
-    }
-
-    if (micromatch.isMatch(url.pathname, redirectRoutes)) {
-      const isLoggedIn = await checkAndSetSession(cookies);
-      if (isLoggedIn) {
-        return redirect("/dashboard");
-      }
-    }
-
-    if (micromatch.isMatch(url.pathname, protectedAPIRoutes)) {
-      const refreshToken = cookies.get("sb-refresh-token");
-        console.log("Middleware: Checking API route:", url.pathname, refreshToken); // Keep this log
-
-      if (!refreshToken) { // Only need to check refresh token
-          return new Response(
-            JSON.stringify({
-              error: "Unauthorized",
-            }),
-            { status: 401, headers: { "Content-Type": "application/json" } }, // Set content type
-          );
-      }
-
-      const { data: { session }, error } = await supabase.auth.getSession(); // Use getSession
-        console.log("Middleware: session:", session, "error:", error);
-
-        if (error || !session) {
-            clearAuthCookies(cookies); // Clear cookies if session is invalid
-            return new Response(
-                JSON.stringify({
-                    error: "Unauthorized",
-                }),
-                { status: 401, headers: { "Content-Type": "application/json" } }, // Set content type
-            );
-        }
-
-        // checkAndSetSession already handles the cookie refresh, so we *remove* the redundant check here:
-        // if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
-        //    setAuthCookies(cookies, session.access_token, session.refresh_token);
-        // }
-      locals.userId = session.user.id; // Set locals.userId here! VERY IMPORTANT
-
-    }
-
-    return next();
-  },
-);
+</script>
 ```
 
 ---
@@ -653,176 +997,6 @@ import '@fontsource-variable/open-sans';
     <slot />
   </body>
 </html>
-```
-
----
-
-`src\pages\signin.astro`:
-```
----
-// src/pages/signin.astro
-import Base from "../layout/Base.astro";
-import AuthForm from "../components/AuthForm.astro";
-const title = "Sign in";
-
----
-
-<Base title={title}>
-  <main>
-    <section>
-      <h1>{title}</h1>
-      <AuthForm showProviderButtons />
-    </section>
-  </main>
-</Base>
-```
-
----
-
-`src\pages\dashboard.astro`:
-```
----
-// src/pages/dashboard.astro
-import { Image } from 'astro:assets';
-import Base from "../layout/Base.astro";
-import Form from "../components/Form.astro"; // Import the form
-
-const { email, name, avatar_url, userId } = Astro.locals; // Destructure userId
----
-
-<Base title="Dashboard">
-  <section>
-    {avatar_url && <Image src={avatar_url} alt={name ? `${name}'s avatar` : "User Avatar"} width={64} height={64} />}
-    <p>Welcome, {name || email}!</p>
-    <p>User ID: {userId}</p>
-    <p>This is a protected page.</p>
-    <Form></Form>
-    <a href="/api/auth/signout">Sign out</a>
-  </section>
-</Base>
-```
-
----
-
-`src\lib\auth.ts`:
-```
-// src/lib/auth.ts
-import type { AstroCookies } from "astro";
-import { supabase } from "./supabase";
-
-export function setAuthCookies(
-  cookies: AstroCookies,
-  access_token: string,
-  refresh_token: string,
-) {
-  cookies.set("sb-access-token", access_token, {
-    sameSite: "strict",
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-  cookies.set("sb-refresh-token", refresh_token, {
-    sameSite: "strict",
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-}
-
-export function clearAuthCookies(cookies: AstroCookies) {
-  cookies.delete("sb-access-token", { path: "/" });
-  cookies.delete("sb-refresh-token", { path: "/" });
-}
-
-export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Locals) {
-    const refreshToken = cookies.get("sb-refresh-token");
-
-    if (!refreshToken) {
-        return false;
-    }
-
-    const { data: { session }, error } = await supabase.auth.getSession();
-
-    if (error || !session) {
-        clearAuthCookies(cookies);
-        return false;
-    }
-
-    if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
-        setAuthCookies(cookies, session.access_token, session.refresh_token);
-    }
-
-
-    if (locals && session.user) {
-        locals.email = session.user.email ?? "";
-        locals.name = session.user.user_metadata?.name ?? "";
-        locals.avatar_url = session.user.user_metadata?.avatar_url ?? "";
-        locals.userId = session.user.id;
-    }
-
-    return true;
-}
-```
-
----
-
-`src\components\AuthForm.astro`:
-```
----
-// src/components/AuthForm.astro
-interface Props {
-  showProviderButtons?: boolean;
-}
-
-const { showProviderButtons = false } = Astro.props;
----
-
-{
-  showProviderButtons && (
-    <>
-      <p>Sign in with</p>
-      <form action="/api/auth/signin" method="post">
-        <button value="google" name="provider" type="submit">
-          Sign in with Google
-        </button>
-      </form>
-    </>
-  )
-}
-```
-
----
-
-`src\pages\api\auth\signin.ts`:
-```
-// src/pages/api/auth/signin.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
-import type { Provider } from "@supabase/supabase-js";
-
-export const POST: APIRoute = async ({ request, redirect }) => {
-  const formData = await request.formData();
-  const provider = formData.get("provider")?.toString();
-
-  if (provider) {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: provider as Provider,
-      options: {
-        redirectTo: import.meta.env.DEV
-          ? "http://localhost:4321/api/auth/callback"
-          : "https://faraidacademy.netlify.app/api/auth/callback",
-      },
-    });
-
-    if (error) {
-      return new Response(error.message, { status: 500 });
-    }
-
-    return redirect(data.url);
-  }
-
-  return new Response("Provider required", { status: 400 });
-};
 ```
 
 ---

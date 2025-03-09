@@ -2,11 +2,12 @@
 import Base from "../../layout/Base.astro";
 import { supabase } from "../../lib/supabase";
 import type { Question, Answer } from "../../types";
+import { handleSupabaseError } from "../../lib/apiHelpers"; 
 
 const { id } = Astro.params;
 
 if (!id || isNaN(Number(id))) {
-  return Astro.redirect("/competition");
+  return Astro.redirect("/404");
 }
 
 const questionId = Number(id);
@@ -18,11 +19,11 @@ const { data: questionData, error: questionError } = await supabase
   .single();
 
 if (questionError) {
-  return handleSupabaseError(questionError, "Error fetching question");
+  return Astro.redirect("/404");
 }
 
 if (!questionData) {
-  return Astro.redirect("/competition");
+  return Astro.redirect("/404");
 }
 
 const { data: answersData, error: answersError } = await supabase
@@ -31,7 +32,7 @@ const { data: answersData, error: answersError } = await supabase
   .eq("question_id", questionId);
 
 if (answersError) {
-  return handleSupabaseError(answersError, "Error fetching answers");
+  return Astro.redirect("/404");
 }
 
 const question: Question = questionData;
@@ -40,141 +41,171 @@ const answers: Answer[] = answersData || [];
 const totalQuestionCount = 47;
 
 let userResult = undefined;
+let userHasAnswered = false;
 
 if (Astro.locals.userId) {
-  const { data: resultData, error: resultError } = await supabase
+  // Check if the user has an entry in the results table
+  const { data: resultExistsData, error: resultExistsError } = await supabase
     .from("results")
-    .select("answer_id")
+    .select("id")
     .eq("user_id", Astro.locals.userId)
     .eq("question_id", questionId)
     .single();
 
-  if (resultError && resultError.code !== 'PGRST116') {
-    console.error("Error fetching user result:", resultError);
-  } else if (resultData) {
-    userResult = resultData.answer_id;
+  if (resultExistsError && resultExistsError.code !== 'PGRST116') {
+    console.error("Error checking if user has answered:", resultExistsError);
+  } else {
+    userHasAnswered = !!resultExistsData;
+  }
+
+  // Fetch the actual answer if the user has answered
+  if (userHasAnswered) {
+    const { data: resultData, error: resultError } = await supabase
+      .from("results")
+      .select("answer_id")
+      .eq("user_id", Astro.locals.userId)
+      .eq("question_id", questionId)
+      .single();
+
+    if (resultError && resultError.code !== 'PGRST116') {
+      console.error("Error fetching user result:", resultError);
+    } else if (resultData) {
+      userResult = resultData.answer_id;
+    }
   }
 }
 ---
 
 <Base title={`Question ${questionId}`}>
   <section data-question-id={questionId}>
-      <h1>Question {questionId}</h1>
-      <p>Case: {question.case}</p>
-      {question.money && <p>Money: {question.money}</p>}
-      <p>{question.question}</p>
+    <h1>Question {questionId}</h1>
+    <p>Case: {question.case}</p>
+    {question.money && <p>Money: {question.money}</p>}
+    <p>{question.question}</p>
 
-      <h2>Answers</h2>
-      <p>Status: <span id="status-indicator">{userResult ? "saved" : "unsaved"}</span></p>
-      <ul>
-          {
-            answers.map((answer) => (
-              <li>
-                <button
-                  data-answer-id={answer.id}
-                  class={`answer-button ${userResult === answer.id ? 'selected' : ''}`}
-                >
-                  {answer.answer}
-                </button>
-              </li>
-            ))
-          }
-          <li>
-            <button data-answer-id="null" class={`answer-button ${userResult === null ? 'selected' : ''}`}>
-              None of the Above
-            </button>
-          </li>
-        </ul>
+    <h2>Answers</h2>
+    <p>Status: <span id="status-indicator">
+      {userHasAnswered ? "Saved" : "Unanswered"}
+    </span></p>
+    <ul id="answer-list">
+      {answers.map((answer) => (
+        <li>
+          <button
+            data-answer-id={answer.id}
+            class={`answer-button ${userResult === answer.id ? 'selected' : ''}`}
+          >
+            {answer.answer}
+          </button>
+        </li>
+      ))}
+      <li>
+        <button data-answer-id="null" class={`answer-button ${userResult === null ? 'selected' : ''}`}>
+          None of the Above
+        </button>
+      </li>
+    </ul>
 
-        <div class="navigation">
-          {questionId > 1 && (
-              <a href={`/competition/${questionId - 1}`}>Previous</a>
-          )}
-          {questionId < totalQuestionCount && (
-              <a href={`/competition/${questionId + 1}`}>Next</a>
-          )}
-      </div>
+    <div class="navigation">
+      {questionId > 1 && (
+        <a href={`/competition/${questionId - 1}`}>Previous</a>
+      )}
+      {questionId < totalQuestionCount && (
+        <a href={`/competition/${questionId + 1}`}>Next</a>
+      )}
+    </div>
   </section>
 </Base>
 
 <script>
-  const answerButtons = document.querySelectorAll<HTMLElement>(".answer-button");
   const statusIndicator = document.getElementById("status-indicator")!;
+  const answerList = document.getElementById("answer-list")!;
 
   const sectionElement = document.querySelector('section');
   const questionId = sectionElement ? parseInt(sectionElement.dataset.questionId || '', 10) : null;
 
-  async function handleFetchError(response: Response) {
+  async function submitAnswer(questionId: number | null, answerId: number | null | string) {
+    if (questionId === null) {
+      console.error("Question ID not found!");
+      statusIndicator.textContent = "error";
+      return;
+    }
+
+    const parsedAnswerId = answerId === 'null' ? null : (typeof answerId === 'string' ? parseInt(answerId, 10) : answerId);
+
+    if (parsedAnswerId === null && answerId !== 'null') {
+      console.error("Invalid answer ID:", answerId);
+      statusIndicator.textContent = "error";
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/answers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          questionId: questionId,
+          answerId: parsedAnswerId,
+        }),
+      });
+
       if (!response.ok) {
-          const errorData = await response.json();
-          const errorMessage = errorData.error || "Failed to save answer";
-          throw new Error(errorMessage);
+        const errorData = await response.json();
+        const errorMessage = errorData.error || "Failed to save answer";
+        throw new Error(errorMessage); 
       }
+
+      statusIndicator.textContent = "Saved";
+      return true;
+
+    } catch (error) {
+      console.error("Error saving answer:", error);
+      statusIndicator.textContent = "error";
+
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert("An unexpected error occurred.");
+      }
+      return false;
+    }
   }
 
-  answerButtons.forEach((button) => {
-      button.addEventListener("click", async () => {
-          answerButtons.forEach((b) => b.classList.remove("selected"));
-          button.classList.add("selected");
-          statusIndicator.textContent = "unsaved";
+  answerList.addEventListener("click", async (event) => {
+    const target = event.target as HTMLElement;
+    if (target.matches(".answer-button")) {
+      answerList.querySelectorAll(".answer-button").forEach(btn => btn.classList.remove("selected"));
+      target.classList.add("selected");
+      statusIndicator.textContent = "Unanswered";
 
-          const answerId = button.dataset.answerId;
-          const parsedAnswerId = answerId === 'null' ? null : (answerId ? parseInt(answerId, 10) : null);
-
-          if (questionId === null) {
-              console.error("Question ID not found!");
-              statusIndicator.textContent = "error";
-              return;
-          }
-
-          if (parsedAnswerId === null && answerId !== 'null') {
-              console.error("Invalid answer ID:", answerId);
-              statusIndicator.textContent = "error";
-              return;
-          }
-
-          try {
-              const response = await fetch("/api/answers", {
-                  method: "POST",
-                  headers: {
-                      "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                      questionId: questionId,
-                      answerId: parsedAnswerId,
-                  }),
-              });
-
-              await handleFetchError(response);
-              statusIndicator.textContent = "saved";
-
-          } catch (error) {
-              console.error("Error saving answer:", error);
-              statusIndicator.textContent = "error";
-          }
-      });
+      const answerId = target.dataset.answerId;
+      if (answerId) {
+        await submitAnswer(questionId, answerId);
+      }
+    }
   });
 </script>
 
 <style>
   .navigation {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 2rem;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
   }
 
   .answer-button {
-      margin-bottom: 0.5rem;
-      padding: 0.5rem 1rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background-color: #f0f0f0;
-      cursor: pointer;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f0f0f0;
+    cursor: pointer;
   }
 
   .answer-button.selected {
-      background-color: #a0c4ff;
-      border-color: #68a0ff;
-      color: black;
+    background-color: #a0c4ff;
+    border-color: #68a0ff;
+    color: black;
   }
 </style>

@@ -12,9 +12,13 @@
   },
   "dependencies": {
     "@astrojs/netlify": "^6.1.0",
+    "@astrojs/sitemap": "^3.2.1",
+    "@fontsource-variable/eb-garamond": "^5.2.5",
     "@fontsource-variable/open-sans": "^5.1.1",
+    "@iconify-json/material-symbols": "^1.2.15",
     "@supabase/supabase-js": "^2.39.1",
     "astro": "^5.2.5",
+    "astro-icon": "^1.1.5",
     "material": "github:treeder/material",
     "micromatch": "^4.0.5"
   },

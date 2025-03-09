@@ -2,13 +2,17 @@
 // src/pages/index.astro
 import Base from "../layout/Base.astro";
 import { checkAndSetSession } from '../lib/auth';
+import { Image } from 'astro:assets';
+import ayahLogo from '../images/ayatfull.svg';
+import { Icon } from 'astro-icon/components';
 
 const isLoggedIn = await checkAndSetSession(Astro.cookies);
 
 ---
 
-<Base title="Home">
-  <h1>Welcome</h1>
+<Base title="Faraid Academy - Home">
+  <Image src={ayahLogo} alt="Quran Verse" height="100"/>
+  <Icon name="material-symbols:arrow-downward-rounded" size="24" style="color: blue"/>
   {
     isLoggedIn ? (
       <p>
