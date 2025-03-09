@@ -6,40 +6,21 @@ interface Props {
   userPhone?: string;
 }
 
-const { userName = "", userSchool = "", userPhone = "" } = Astro.props; // Destructure with a default value
+const { userName = "", userSchool = "", userPhone = "" } = Astro.props;
 ---
 
 <md-dialog class="dialog" id="edit-profile">
+
     <div slot="headline">Edit Profil</div>
+
     <form slot="content" id="form-id" method="dialog">
-        <md-outlined-text-field
-            label="Nama Lengkap"
-            required
-            minlength="4"
-            value={userName}
-            id="name-input"
-        ></md-outlined-text-field>
-        <md-outlined-text-field
-            label="Universitas/Sekolah"
-            required
-            minlength="4"
-            placeholder="Universitas Islam"
-            value={userSchool}
-            id="school-input"
-        ></md-outlined-text-field>
-        <md-outlined-text-field
-            label="Nomor Telefon"
-            required
-            minlength="4"
-            type="tel"
-            placeholder="62800"
-            value={userPhone}
-            id="phone-input"
-        ></md-outlined-text-field>
-        <div id="form-message"></div>
+        <md-outlined-text-field label="Nama Lengkap" required minlength="4" value={userName} name="name"></md-outlined-text-field>
+        <md-outlined-text-field label="Universitas/Sekolah" required minlength="4" value={userSchool} name="school"></md-outlined-text-field>
+        <md-outlined-text-field label="Nomor Telefon" required minlength="4" type="tel" value={userPhone} name="phone"></md-outlined-text-field>
     </form>
+
     <div slot="actions">
-        <md-filled-button form="form-id">SIMPAN</md-filled-button>
+        <md-filled-button form="form-id" id="submit-button">SIMPAN</md-filled-button>
     </div>
 </md-dialog>
 
@@ -48,22 +29,13 @@ const { userName = "", userSchool = "", userPhone = "" } = Astro.props; // Destr
     import "material/button/filled-button";
     import "material/dialog/dialog";
 
-    const form = document.getElementById("form-id") as HTMLFormElement;
-    const dialog = document.querySelector("#edit-profile") as any;
-    const formMessage = document.getElementById("form-message")!;
+    const submitButton = document.getElementById("submit-button");
 
-
-    form.addEventListener("submit", async (event) => {
-        // Prevent the default dialog-closing behavior.
-        event.preventDefault();
-
-        const nameInput = document.getElementById("name-input") as HTMLInputElement;
-        const schoolInput = document.getElementById("school-input") as HTMLInputElement;
-        const phoneInput = document.getElementById("phone-input") as HTMLInputElement;
-
-        const name = nameInput.value;
-        const school = schoolInput.value;
-        const phone = phoneInput.value;
+    const submitProfileForm = async () => {
+        const form = document.getElementById("form-id") as HTMLFormElement;
+        const name = (form.querySelector('[name="name"]') as HTMLInputElement).value;
+        const school = (form.querySelector('[name="school"]') as HTMLInputElement).value;
+        const phone = (form.querySelector('[name="phone"]') as HTMLInputElement).value;
 
         try {
             const response = await fetch("/api/profile", {
@@ -74,37 +46,25 @@ const { userName = "", userSchool = "", userPhone = "" } = Astro.props; // Destr
                 body: JSON.stringify({ name, school, phone }),
             });
 
-            if (response.ok) {
-                // Success!
-                formMessage.textContent = "Profile updated successfully!";
-                formMessage.style.color = "green";
-                 // Update Profile.astro
-                const profileSection = document.querySelector("section");
-                if(profileSection){
-                    const profileName = profileSection.querySelector("p");
-                    if (profileName) {
-                      profileName.textContent = name; // Update only the name
-                    }
-                }
-
-
-                setTimeout(() => {
-                  dialog.close(); // Close the dialog
-                  formMessage.textContent = "";
-                }, 1500); // close the form after 1.5s
-
-            } else {
-                // Handle errors (e.g., from the API).
+            if (!response.ok) {
                 const errorData = await response.json();
-                formMessage.textContent = `Error: ${errorData.error}`;
-                formMessage.style.color = "red";
+                alert(`Error updating profile: ${errorData.error} - ${errorData.details}`);
+                return;
             }
+
+            const dialog = document.querySelector("#edit-profile") as any;
+            dialog.close = true;
+            window.location.reload();
+
         } catch (error) {
             console.error("Error updating profile:", error);
-            formMessage.textContent = "An unexpected error occurred.";
-            formMessage.style.color = "red";
+            alert("An unexpected error occurred.");
         }
-    });
+    };
+
+    if (submitButton) {
+        submitButton.addEventListener('click', submitProfileForm);
+    }
 </script>
 
 <style>

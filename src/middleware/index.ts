@@ -1,7 +1,7 @@
 // src/middleware/index.ts
 import { defineMiddleware } from "astro:middleware";
 import micromatch from "micromatch";
-import { checkAndSetSession, clearAuthCookies } from "../lib/auth"; // Import clearAuthCookies
+import { checkAndSetSession, clearAuthCookies } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 
 const protectedRoutes = [
@@ -10,7 +10,7 @@ const protectedRoutes = [
     "/competition/**",
 ];
 const redirectRoutes = ["/signin(|/)", "/register(|/)"];
-const protectedAPIRoutes = ["/api/questions(|/)", "/api/answers(|/)"];
+const protectedAPIRoutes = ["/api/questions(|/)", "/api/answers(|/)", "/api/profile(|/)"];
 
 export const onRequest = defineMiddleware(
   async ({ locals, url, cookies, redirect }, next) => {
@@ -30,35 +30,31 @@ export const onRequest = defineMiddleware(
 
     if (micromatch.isMatch(url.pathname, protectedAPIRoutes)) {
       const refreshToken = cookies.get("sb-refresh-token");
-        console.log("Middleware: Checking API route:", url.pathname, refreshToken); // Keep this log
+        console.log("Middleware: Checking API route:", url.pathname, refreshToken);
 
-      if (!refreshToken) { // Only need to check refresh token
+      if (!refreshToken) {
           return new Response(
             JSON.stringify({
               error: "Unauthorized",
             }),
-            { status: 401, headers: { "Content-Type": "application/json" } }, // Set content type
+            { status: 401, headers: { "Content-Type": "application/json" } },
           );
       }
 
-      const { data: { session }, error } = await supabase.auth.getSession(); // Use getSession
+      const { data: { session }, error } = await supabase.auth.getSession();
         console.log("Middleware: session:", session, "error:", error);
 
         if (error || !session) {
-            clearAuthCookies(cookies); // Clear cookies if session is invalid
+            clearAuthCookies(cookies);
             return new Response(
                 JSON.stringify({
                     error: "Unauthorized",
                 }),
-                { status: 401, headers: { "Content-Type": "application/json" } }, // Set content type
+                { status: 401, headers: { "Content-Type": "application/json" } },
             );
         }
 
-        // checkAndSetSession already handles the cookie refresh, so we *remove* the redundant check here:
-        // if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
-        //    setAuthCookies(cookies, session.access_token, session.refresh_token);
-        // }
-      locals.userId = session.user.id; // Set locals.userId here! VERY IMPORTANT
+      locals.userId = session.user.id;
 
     }
 

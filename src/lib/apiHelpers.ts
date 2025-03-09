@@ -1,12 +1,13 @@
 // src/lib/apiHelpers.ts
 import type { PostgrestError } from "@supabase/supabase-js";
+import { AuthError } from "@supabase/supabase-js";
 
 export function handleSupabaseError(error: PostgrestError, message: string) {
   console.error(message, error);
   return new Response(
     JSON.stringify({
       error: message,
-      details: error.message, // Include the specific error message
+      details: error.message,
     }),
     { status: 500, headers: { "Content-Type": "application/json" } },
   );
@@ -33,3 +34,14 @@ export function handleRequestError(error: any, message: string) {
         { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
+
+export function handleAuthError(error: AuthError, message: string) {
+  console.error(message, error);
+  return new Response(
+    JSON.stringify({
+      error: message,
+      details: error.message,
+    }),
+    { status: 500, headers: { "Content-Type": "application/json" } },
+  );
+}

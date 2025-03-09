@@ -51,6 +51,8 @@ export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Loc
         locals.avatar_url = session.user.user_metadata?.avatar_url ?? "";
         locals.userId = session.user.id;
         locals.createdAt = session.user.created_at;
+        locals.school = session.user.user_metadata?.school ?? ""; // NEW
+        locals.phone = session.user.user_metadata?.phone ?? "";
     }
 
     return true;

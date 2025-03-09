@@ -1,6 +1,7 @@
 ---
 import { Image } from "astro:assets";
-const { email, name, avatar_url, userId, createdAt } = Astro.locals;
+// Fetch school and phone from Astro.locals
+const { email, name, avatar_url, userId, createdAt, school, phone } = Astro.locals;
 
 function formatDate(dateString: string | undefined) {
   if (!dateString) {
@@ -29,8 +30,10 @@ function formatDate(dateString: string | undefined) {
         )
     }
     <p>{name || email}</p>
+    {school && <p>Universitas/Sekolah: {school}</p>}
+    {phone && <p>Nomor Telefon: {phone}</p>}
     <p>Terdaftar: {formatDate(createdAt)}</p>
-    <a href="/index">Halaman Utama</a>
+    <a href="/">Halaman Utama</a>
     <a href="/api/auth/signout">Sign out</a>
 </section>
 

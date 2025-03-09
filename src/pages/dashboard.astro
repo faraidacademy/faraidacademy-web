@@ -4,12 +4,12 @@
 import Base from "../layout/Base.astro";
 import Form from "../components/Form.astro";
 import Profile from "../components/Profile.astro";
-const { name } = Astro.locals;
+const { name, school, phone } = Astro.locals; // Get school too!
 ---
 
 <Base title="Dashboard">
   <Profile />
-  <Form />
+  <Form userName={name} userSchool={school} userPhone={phone} />
   <md-text-button id="edit-profile-button">EDIT PROFIL</md-text-button>
 </Base>
 
