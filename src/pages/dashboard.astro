@@ -2,14 +2,12 @@
 // src/pages/dashboard.astro
 
 import Base from "../layout/Base.astro";
-import Form from "../components/Form.astro";
 import Profile from "../components/Profile.astro";
 const { name, school, phone } = Astro.locals;
 ---
 
 <Base title="Dashboard">
   <Profile />
-  <Form client:idle userName={name} userSchool={school} userPhone={phone} />
   <md-text-button id="edit-profile-button">EDIT PROFIL</md-text-button>
 </Base>
 
