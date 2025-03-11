@@ -13,7 +13,7 @@ export default defineConfig({
   output: 'server',
 
   adapter: netlify({
-    edgeMiddleware: true,
+    edgeMiddleware: false,
   }),
 
   integrations: [sitemap(), icon({
