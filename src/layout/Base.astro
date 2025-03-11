@@ -10,7 +10,7 @@ interface Props {
 const { title } = Astro.props;
 
 // Perform the login check HERE, in the layout
-const isLoggedIn = await checkAndSetSession(Astro.cookies);
+const isLoggedIn = await checkAndSetSession(Astro.cookies, Astro.locals);
 
 import '@fontsource-variable/open-sans';
 

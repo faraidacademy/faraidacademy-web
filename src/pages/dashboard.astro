@@ -9,7 +9,7 @@ const { name, school, phone } = Astro.locals;
 
 <Base title="Dashboard">
   <Profile />
-  <Form userName={name} userSchool={school} userPhone={phone} />
+  <Form client:idle userName={name} userSchool={school} userPhone={phone} />
   <md-text-button id="edit-profile-button">EDIT PROFIL</md-text-button>
 </Base>
 
