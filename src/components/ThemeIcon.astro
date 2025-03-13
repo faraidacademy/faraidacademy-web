@@ -19,18 +19,18 @@ import { Icon } from "astro-icon/components";
   }
 
   /* Light theme: show light, hide dark */
-  :global(.light) [data-icon="light-icon"] {
+  :global(.light) [data-icon="dark-icon"] {
     display: flex;
   }
-  :global(.light) [data-icon="dark-icon"] {
+  :global(.light) [data-icon="light-icon"] {
     display: none;
   }
 
   /* Dark theme: hide light, show dark */
-  :global(.dark) [data-icon="light-icon"] {
+  :global(.dark) [data-icon="dark-icon"] {
     display: none;
   }
-  :global(.dark) [data-icon="dark-icon"] {
+  :global(.dark) [data-icon="light-icon"] {
     display: flex;
   }
 </style>

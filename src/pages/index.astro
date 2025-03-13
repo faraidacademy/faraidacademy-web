@@ -2,46 +2,90 @@
 // src/pages/index.astro
 
 import Base from "../layout/Base.astro";
-import Ayat from '../images/ayat.svg';
+import Ayat from "../images/ayat.svg";
 import { Icon } from "astro-icon/components";
 import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro";
+const { isLoggedIn } = Astro.props;
 ---
 
 <Base title="Faraid Academy - Home">
-  <div class="main-verse col">
-    <div class="verse row">
-      <Icon class="flip" name="parenthesis" size="2em" />
-      <Ayat height={64} fill="var(--md-sys-color-on-surface)" />
-      <Icon name="parenthesis" size="2em" />
+  <div class="main-text col">
+    <div class="main-verse col">
+      <div class="verse row">
+        <Icon class="flip" name="parenthesis" size="1.5em" />
+        <Ayat height="3em" ; fill="var(--md-sys-color-on-surface)" />
+        <Icon name="parenthesis" size="1.5em" />
+      </div>
+      <div class="translation col">
+        <p>
+          These (inheritance rules) are settled portions ordained by Allah <Icon
+            name="tabarak"
+          />
+        </p>
+      </div>
     </div>
-    <p>
-      These (inheritance rules) are settled portions ordained by Allah <Icon
-        name="tabarak"
-      />
-    </p>
+    <div class="main-hadith col">
+      <div class="hadith" dir="rtl">
+        <p>&laquo;ألحقوا الفرائض بأهلها&raquo;</p>
+      </div>
+      <p class="translation">
+        Assign the prescribed shares [of inheritance] to the ones whom they
+        rightfully belong
+      </p>
+    </div>
   </div>
-  <CompetitionAnnouncement></CompetitionAnnouncement>
+  <CompetitionAnnouncement isLoggedIn={isLoggedIn} />
 
   <style>
+    p {
+      text-align: center;
+    }
+    .main-text {
+      gap: 2em;
+      font-family: "EB Garamond Variable", serif;
+      margin: 0 0 4em;
+    }
     .main-verse {
       gap: 1em;
-      font-family: "EB Garamond Variable", serif;
+      font-size: 1.1em;
+    }
+
+    .verse {
+      gap: 1em;
+      justify-content: center;
+    }
+
+    .translation {
+      text-wrap: pretty;
+      font-size: 0.9em;
     }
 
     .flip {
       transform: scaleX(-1);
     }
 
-    .verse {
-      gap: 1em;
+    .main-hadith {
+      display: none;
+      font-size: 0.6em;
     }
 
-    p {
-      text-align: center;
+    .hadith {
+      font-family: "Amiri", serif;
+      font-size: 1.3em;
     }
 
     [data-icon="tabarak"] {
-    vertical-align: middle;
-}
+      vertical-align: middle;
+    }
+
+    @media (min-width: 900px) {
+      body {
+        font-size: 1.5em;
+      }
+
+      .main-hadith{
+        display: flex;
+      }
+    }
   </style>
 </Base>

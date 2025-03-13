@@ -1,31 +1,76 @@
 ---
 import { Icon } from "astro-icon/components";
+import Countdown from "./Countdown.astro";
+
+interface Props {
+    isLoggedIn: boolean;
+}
+
+const { isLoggedIn } = Astro.props;
 ---
 
-<md-elevated-card class="card col">
+<md-outlined-card class="card col">
     <div class="main col">
-        <Icon name="trophy" size="2em" />
-        Olimpiade Faraid<wbr> 2025
+        <Icon name="trophy" size="3em" />
+        Faraid Competition 2025
     </div>
-    <md-filled-button>DAFTAR</md-filled-button>
-</md-elevated-card>
+    <p>Pendaftaran ditutup dalam:</p>
+    <Countdown />
+    {isLoggedIn ? (
+        <md-filled-button href="/competition">JOIN</md-filled-button>
+    ) : (
+        <form action="/api/auth/signin" method="post">
+            <md-filled-button type="submit" name="provider" value="google">
+                JOIN
+            </md-filled-button>
+        </form>
+    )}
+</md-outlined-card>
+
 <script>
     import "material/button/filled-button";
     import "material/card/outlined-card";
     import "material/card/elevated-card";
     import "material/card/filled-card";
 </script>
+
 <style>
     .card {
+        position: relative;
         padding: 1em;
-        font-size: 1.5em;
+        font-size: 1.3em;
         text-align: center;
-        gap:1em;
-        font-weight: 600;
+        gap: 0.5em;
+        font-weight: 500;
         backdrop-filter: blur(1px);
+        max-width: 90%;
+        min-width: 80%;
+        justify-content: space-between;
+        --_container-shape: 28px;
+        --_container-color: var(--md-sys-color-surface-variant);
+        backdrop-filter: blur(4px);
     }
 
     .main {
         gap: 0.5em;
+        font-weight: 600;
+    }
+
+    .card > p {
+        font-size: 0.5em;
+        opacity: 0.5;
+    }
+
+    @media (min-width: 600px) {
+        .card {
+            flex-direction: row;
+            align-items: center;
+            gap: 1em;
+        }
+
+        .main {
+            flex-direction: row;
+            align-items: center;
+        }
     }
 </style>

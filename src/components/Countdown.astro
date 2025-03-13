@@ -1,0 +1,52 @@
+---
+const targetDate: Date = new Date('April 25, 2025 00:00:00 GMT+0000');
+const targetTimestamp: number = targetDate.getTime();
+
+interface Props{
+  preffix?: string;
+  suffix?: string
+}
+
+const {preffix, suffix} = Astro.props;
+
+---
+
+<p class="countdown" data-target={targetTimestamp}>
+  {preffix}<span class="countdown-text"></span>{suffix}
+</p>
+
+<style>
+  .countdown {
+    font-size: 0.7em;
+  }
+</style>
+
+<script>
+  const countdownElement = document.querySelector('.countdown') as HTMLParagraphElement;
+  const targetTimestamp = parseInt(countdownElement.dataset.target || '0', 10);
+  const countdownTextSpan = countdownElement.querySelector('.countdown-text') as HTMLSpanElement;
+
+  function updateCountdown() {
+    const now: number = new Date().getTime();
+    const timeLeft: number = targetTimestamp - now;
+
+    if (timeLeft <= 0) {
+      countdownTextSpan.textContent = 'Countdown finished!';
+      return;
+    }
+
+    const days: number = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+    const hours: number = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes: number = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds: number = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+    const countdownString: string = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+
+    countdownTextSpan.textContent = countdownString;
+
+    setTimeout(updateCountdown, 1000);
+  }
+
+  updateCountdown();
+
+</script>
