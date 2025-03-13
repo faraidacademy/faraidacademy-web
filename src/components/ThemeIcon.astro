@@ -1,0 +1,77 @@
+---
+// src/components/ThemeIcon.astro
+import { Icon } from "astro-icon/components";
+---
+
+<button id="themeToggle" aria-label="Toggle Theme">
+  <Icon name="material-symbols:light-mode-rounded" data-icon="light-icon" />
+  <Icon name="material-symbols:dark-mode-rounded" data-icon="dark-icon" />
+</button>
+
+<style>
+  #themeToggle {
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    color: var(--md-sys-color-on-surface);
+    font-size: 1.5rem;
+  }
+
+  /* Light theme: show light, hide dark */
+  :global(.light) [data-icon="light-icon"] {
+    display: flex;
+  }
+  :global(.light) [data-icon="dark-icon"] {
+    display: none;
+  }
+
+  /* Dark theme: hide light, show dark */
+  :global(.dark) [data-icon="light-icon"] {
+    display: none;
+  }
+  :global(.dark) [data-icon="dark-icon"] {
+    display: flex;
+  }
+</style>
+
+<script is:inline>
+  const theme = (() => {
+    const localStorageTheme = localStorage.getItem("theme");
+    if (localStorageTheme === "dark" || localStorageTheme === "light") {
+      return localStorageTheme;
+    }
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  })();
+
+  function applyTheme(currentTheme) {
+    const root = document.documentElement;
+    if (currentTheme === "dark") {
+      root.classList.add("dark");
+      root.classList.remove("light");
+    } else {
+      root.classList.add("light");
+      root.classList.remove("dark");
+    }
+    localStorage.setItem("theme", currentTheme);
+  }
+
+  applyTheme(theme);
+
+  const handleToggleClick = () => {
+    const element = document.documentElement;
+    let isDark;
+    if (element.classList.contains("dark")) {
+      isDark = false;
+    } else {
+       isDark = true;
+    }
+
+    applyTheme(isDark ? "dark" : "light");
+  };
+
+  document.getElementById("themeToggle")?.addEventListener("click", handleToggleClick);
+</script>

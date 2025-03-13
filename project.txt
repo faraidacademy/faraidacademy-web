@@ -1,11 +1,72 @@
 ---
 
+`src\styles\light.css`:
+```
+.light {
+  --md-sys-color-primary: rgb(6 107 91);
+  --md-sys-color-surface-tint: rgb(6 107 91);
+  --md-sys-color-on-primary: rgb(255 255 255);
+  --md-sys-color-primary-container: rgb(160 242 222);
+  --md-sys-color-on-primary-container: rgb(0 32 26);
+  --md-sys-color-secondary: rgb(74 99 93);
+  --md-sys-color-on-secondary: rgb(255 255 255);
+  --md-sys-color-secondary-container: rgb(205 232 224);
+  --md-sys-color-on-secondary-container: rgb(6 32 26);
+  --md-sys-color-tertiary: rgb(67 98 120);
+  --md-sys-color-on-tertiary: rgb(255 255 255);
+  --md-sys-color-tertiary-container: rgb(200 230 255);
+  --md-sys-color-on-tertiary-container: rgb(0 30 46);
+  --md-sys-color-error: rgb(186 26 26);
+  --md-sys-color-on-error: rgb(255 255 255);
+  --md-sys-color-error-container: rgb(255 218 214);
+  --md-sys-color-on-error-container: rgb(65 0 2);
+  --md-sys-color-background: rgb(245 251 247);
+  --md-sys-color-on-background: rgb(23 29 27);
+  --md-sys-color-surface: rgb(245 251 247);
+  --md-sys-color-on-surface: rgb(23 29 27);
+  --md-sys-color-surface-variant: rgb(219 229 224);
+  --md-sys-color-on-surface-variant: rgb(63 73 70);
+  --md-sys-color-outline: rgb(111 121 118);
+  --md-sys-color-outline-variant: rgb(191 201 196);
+  --md-sys-color-shadow: rgb(0 0 0);
+  --md-sys-color-scrim: rgb(0 0 0);
+  --md-sys-color-inverse-surface: rgb(43 50 48);
+  --md-sys-color-inverse-on-surface: rgb(236 242 239);
+  --md-sys-color-inverse-primary: rgb(132 214 194);
+  --md-sys-color-primary-fixed: rgb(160 242 222);
+  --md-sys-color-on-primary-fixed: rgb(0 32 26);
+  --md-sys-color-primary-fixed-dim: rgb(132 214 194);
+  --md-sys-color-on-primary-fixed-variant: rgb(0 81 68);
+  --md-sys-color-secondary-fixed: rgb(205 232 224);
+  --md-sys-color-on-secondary-fixed: rgb(6 32 26);
+  --md-sys-color-secondary-fixed-dim: rgb(177 204 196);
+  --md-sys-color-on-secondary-fixed-variant: rgb(51 75 69);
+  --md-sys-color-tertiary-fixed: rgb(200 230 255);
+  --md-sys-color-on-tertiary-fixed: rgb(0 30 46);
+  --md-sys-color-tertiary-fixed-dim: rgb(170 203 228);
+  --md-sys-color-on-tertiary-fixed-variant: rgb(42 74 95);
+  --md-sys-color-surface-dim: rgb(213 219 216);
+  --md-sys-color-surface-bright: rgb(245 251 247);
+  --md-sys-color-surface-container-lowest: rgb(255 255 255);
+  --md-sys-color-surface-container-low: rgb(239 245 241);
+  --md-sys-color-surface-container: rgb(233 239 236);
+  --md-sys-color-surface-container-high: rgb(227 234 230);
+  --md-sys-color-surface-container-highest: rgb(222 228 224);
+}
+
+```
+
+---
+
 `src\layout\Base.astro`:
 ```
 ---
 import Header from "../components/Header.astro";
 import "../styles/global.css";
 import { checkAndSetSession } from '../lib/auth'; // Import here
+import "../styles/light.css";  // Import light theme
+import "../styles/dark.css";   // Import dark theme
+
 
 interface Props {
   title: string;
@@ -14,13 +75,13 @@ interface Props {
 const { title } = Astro.props;
 
 // Perform the login check HERE, in the layout
-const isLoggedIn = await checkAndSetSession(Astro.cookies);
+const isLoggedIn = await checkAndSetSession(Astro.cookies, Astro.locals);
 
 import '@fontsource-variable/open-sans';
 
 ---
 
-<html lang="en">
+<html lang="en">  <!--  No class initially; JS will add it. -->
   <head>
     <meta charset="utf-8" />
     <title>{title}</title>
@@ -35,452 +96,81 @@ import '@fontsource-variable/open-sans';
 
 ---
 
-`src\pages\competition\[id].astro`:
+`src\styles\global.css`:
 ```
----
-import Base from "../../layout/Base.astro";
-import { supabase } from "../../lib/supabase";
-import type { Question, Answer } from "../../types";
-import { handleSupabaseError } from "../../lib/apiHelpers";
-
-const { id } = Astro.params;
-
-if (!id || isNaN(Number(id))) {
-  return Astro.redirect("/404");
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
 }
 
-const questionId = Number(id);
-
-const { data: questionData, error: questionError } = await supabase
-  .from("questions")
-  .select("id, question, money, case")
-  .eq("id", questionId)
-  .single();
-
-if (questionError) {
-  return Astro.redirect("/404");
-}
-
-if (!questionData) {
-  return Astro.redirect("/404");
-}
-
-const { data: answersData, error: answersError } = await supabase
-  .from("answers")
-  .select("id, question_id, answer")
-  .eq("question_id", questionId);
-
-if (answersError) {
-  return Astro.redirect("/404");
-}
-
-const question: Question = questionData;
-const answers: Answer[] = answersData || [];
-
-const totalQuestionCount = 47;
-
-let userResult = undefined;
-let userHasAnswered = false;
-
-if (Astro.locals.userId) {
-  // Check if the user has an entry in the results table
-  const { data: resultExistsData, error: resultExistsError } = await supabase
-    .from("results")
-    .select("id")
-    .eq("user_id", Astro.locals.userId)
-    .eq("question_id", questionId)
-    .single();
-
-  if (resultExistsError && resultExistsError.code !== 'PGRST116') {
-    console.error("Error checking if user has answered:", resultExistsError);
-  } else {
-    userHasAnswered = !!resultExistsData;
-  }
-
-  // Fetch the actual answer if the user has answered
-  if (userHasAnswered) {
-    const { data: resultData, error: resultError } = await supabase
-      .from("results")
-      .select("answer_id")
-      .eq("user_id", Astro.locals.userId)
-      .eq("question_id", questionId)
-      .single();
-
-    if (resultError && resultError.code !== 'PGRST116') {
-      console.error("Error fetching user result:", resultError);
-    } else if (resultData) {
-      userResult = resultData.answer_id;
-    }
-  }
-}
----
-
-<Base title={`Question ${questionId}`}>
-  <section data-question-id={questionId}>
-    <h1>Question {questionId}</h1>
-    <p>Case: {question.case}</p>
-    {question.money && <p>Money: {question.money}</p>}
-    <p>{question.question}</p>
-
-    <h2>Answers</h2>
-    <p>Status: <span id="status-indicator">
-      {userHasAnswered ? "Saved" : "Unanswered"}
-    </span></p>
-    <ul id="answer-list">
-      {answers.map((answer) => (
-        <li>
-          <button
-            data-answer-id={answer.id}
-            class={`answer-button ${userResult === answer.id ? 'selected' : ''}`}
-          >
-            {answer.answer}
-          </button>
-        </li>
-      ))}
-      <li>
-        <button data-answer-id="null" class={`answer-button ${userResult === null ? 'selected' : ''}`}>
-          None of the Above
-        </button>
-      </li>
-    </ul>
-
-    <div class="navigation">
-      {questionId > 1 && (
-        <a href={`/competition/${questionId - 1}`}>Previous</a>
-      )}
-      {questionId < totalQuestionCount && (
-        <a href={`/competition/${questionId + 1}`}>Next</a>
-      )}
-    </div>
-  </section>
-</Base>
-
-<script>
-  const statusIndicator = document.getElementById("status-indicator")!;
-  const answerList = document.getElementById("answer-list")!;
-
-  const sectionElement = document.querySelector('section');
-  const questionId = sectionElement ? parseInt(sectionElement.dataset.questionId || '', 10) : null;
-
-  async function submitAnswer(questionId: number | null, answerId: number | null | string) {
-    if (questionId === null) {
-      console.error("Question ID not found!");
-      statusIndicator.textContent = "error";
-      return;
-    }
-
-    const parsedAnswerId = answerId === 'null' ? null : (typeof answerId === 'string' ? parseInt(answerId, 10) : answerId);
-
-    if (parsedAnswerId === null && answerId !== 'null') {
-      console.error("Invalid answer ID:", answerId);
-      statusIndicator.textContent = "error";
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/answers", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          questionId: questionId,
-          answerId: parsedAnswerId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = errorData.error || "Failed to save answer";
-        throw new Error(errorMessage);
-      }
-
-      statusIndicator.textContent = "Saved";
-      return true;
-
-    } catch (error) {
-      console.error("Error saving answer:", error);
-      statusIndicator.textContent = "error";
-
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert("An unexpected error occurred.");
-      }
-      return false;
-    }
-  }
-
-  answerList.addEventListener("click", async (event) => {
-    const target = event.target as HTMLElement;
-    if (target.matches(".answer-button")) {
-      answerList.querySelectorAll(".answer-button").forEach(btn => btn.classList.remove("selected"));
-      target.classList.add("selected");
-      statusIndicator.textContent = "Unanswered";
-
-      const answerId = target.dataset.answerId;
-      if (answerId) {
-        await submitAnswer(questionId, answerId);
-      }
-    }
-  });
-</script>
-
-<style>
-  .navigation {
+body {
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    font-family: "Open Sans Variable", sans-serif;
+    font-size: 1rem;
+    color: var(--md-sys-color-on-background);
+    background-color: var(--md-sys-color-background);
     display: flex;
-    justify-content: space-between;
-    margin-top: 2rem;
-  }
-
-  .answer-button {
-    margin-bottom: 0.5rem;
-    padding: 0.5rem 1rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: #f0f0f0;
-    cursor: pointer;
-  }
-
-  .answer-button.selected {
-    background-color: #a0c4ff;
-    border-color: #68a0ff;
-    color: black;
-  }
-</style>
-```
-
----
-
-`src\pages\api\auth\callback.ts`:
-```
-// src/pages/api/auth/callback.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
-
-export const GET: APIRoute = async ({ url, cookies, redirect }) => {
-  const authCode = url.searchParams.get("code");
-
-  if (!authCode) {
-    return new Response("No code provided", { status: 400 });
-  }
-
-  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
-
-  if (error) {
-    return new Response(error.message, { status: 500 });
-  }
-
-  const { access_token, refresh_token } = data.session;
-
-  cookies.set("sb-access-token", access_token, {
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-  cookies.set("sb-refresh-token", refresh_token, {
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-
-  // Create a new URL object for the /dashboard page
-  const redirectUrl = new URL('/dashboard', url.origin);
-
-  // Redirect to the cleaned URL
-  return redirect(redirectUrl.toString());
-};
-```
-
----
-
-`src\components\Header.astro`:
-```
----
-import "@fontsource-variable/eb-garamond";
-import { Icon } from "astro-icon/components";
-import { Image } from "astro:assets";
-
-interface Props {
-    isLoggedIn: boolean;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    padding: 1em;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    gap: 1em;
 }
 
-const { isLoggedIn } = Astro.props;
-const { avatar_url, name } = Astro.locals;
----
-
-<header>
-    <div class="main">
-        <Icon name="Logo" />
-        <h1>FaraidAcademy</h1>
-    </div>
-    {
-        isLoggedIn ? (
-            avatar_url ? (
-                <a href="/dashboard">
-                    <Image
-                        class="avatar"
-                        src={avatar_url}
-                        alt={name ? `${name}'s avatar` : "User Avatar"}
-                        width={32}
-                        height={32}
-                        loading="lazy"
-                        format="webp"
-                    />
-                </a>
-            ) : (
-                <a href="/dashboard">Dashboard</a>
-            )
-        ) : (
-            <form action="/api/auth/signin" method="post">
-                <md-text-button
-                    class="button"
-                    name="provider"
-                    value="google"
-                    type="submit"
-                >
-                    LOGIN
-                </md-text-button>
-            </form>
-        )
-    }
-</header>
-
-<script>
-    import "material/button/text-button";
-</script>
-
-<style>
-    header {
-        font-family: "EB Garamond Variable", serif;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 0.3em;
-        position: fixed;
-        top: 0;
-        padding: 1em;
-        justify-content: space-between;
-        width: 100%;
-        background-color: white;
-        z-index: 100;
-    }
-
-    .main{
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap:0.5em;
-    }
-    h1 {
-        font-weight: 500;
-        font-size: 1em;
-    }
-
-    [data-icon="Logo"] {
-        font-size: 1.5em;
-    }
-
-    header a {
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .avatar {
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid #ccc;
-    }
-
-    .button {
-        font-family: "Open Sans", sans-serif;
-    }
-</style>
-
-```
-
----
-
-`src\pages\api\profile.ts`:
-```
-// src/pages/api/profile.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../lib/supabase";
-import { handleRequestError, handleAuthError } from "../../lib/apiHelpers";
-
-export const POST: APIRoute = async ({ request, locals }) => {
-  if (!locals.userId) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  try {
-    const { name, school, phone } = await request.json();
-
-    if (typeof name !== 'string' || name.length < 4) {
-      return handleRequestError(new Error("Invalid name"), "Name must be at least 4 characters");
-    }
-    if (typeof school !== 'string' || school.length < 4) {
-      return handleRequestError(new Error("Invalid school"), "School must be at least 4 characters");
-    }
-    if (typeof phone !== 'string' || phone.length < 4) {
-      return handleRequestError(new Error("Invalid phone"), "Phone must be at least 4 characters");
-    }
-    // Update user metadata
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        name: name,
-        school: school,
-        phone: phone,
-      },
-    });
-
-    if (error) {
-      return handleAuthError(error, "Failed to update profile");
-    }
-
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-     return handleRequestError(error, "Invalid request body");
-  }
-};
-```
-
----
-
-`src\pages\api\auth\signout.ts`:
-```
-// src/pages/api/auth/signout.ts
-import type { APIRoute } from "astro";
-import { clearAuthCookies } from "../../../lib/auth"; // Import
-
-export const GET: APIRoute = async ({ cookies, redirect }) => {
-  clearAuthCookies(cookies); // Use helper
-  return redirect("/signin");
-};
-```
-
----
-
-`src\types.ts`:
-```
-// src/types.ts
-export interface Question {
-  id: number;
-  question: string;
-  money: number | null;
-  case: string | null;
+[data-icon] {
+    color: var(--md-sys-color-on-surface)
 }
 
-export interface Answer {
-  id: number;
-  question_id: number;
-  answer: number;
+input,
+button,
+textarea,
+select {
+    font: inherit;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    overflow-wrap: break-word;
+}
+
+p {
+    text-wrap: pretty;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    text-wrap: balance;
+}
+
+#root,
+#__next {
+    isolation: isolate;
+}
+
+.col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
 }
 ```
 
@@ -490,9 +180,9 @@ export interface Answer {
 ```
 ---
 // src/pages/index.astro
+
 import Base from "../layout/Base.astro";
-import { Image } from "astro:assets";
-import ayahLogo from "../images/ayat.svg";
+import Ayat from '../images/ayat.svg';
 import { Icon } from "astro-icon/components";
 import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro";
 ---
@@ -501,18 +191,13 @@ import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro
   <div class="main-verse col">
     <div class="verse row">
       <Icon class="flip" name="parenthesis" size="2em" />
-      <Image src={ayahLogo} alt="Quran Verse" height="70" />
+      <Ayat height={64} fill="var(--md-sys-color-on-surface)" />
       <Icon name="parenthesis" size="2em" />
     </div>
     <p class="row">
       These (inheritance rules) are settled portions ordained by Allah <Icon
         name="tabarak"
       />
-      <p class="row">
-        (Pembagian warisan) Ini adalah ketetapan dari Allah <Icon
-          name="tabarak"
-        />
-      </p>
     </p>
   </div>
   <CompetitionAnnouncement></CompetitionAnnouncement>
@@ -542,687 +227,238 @@ import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro
 
 ---
 
-`src\middleware\index.ts`:
+`src\styles\dark.css`:
 ```
-// src/middleware/index.ts
-import { defineMiddleware } from "astro:middleware";
-import micromatch from "micromatch";
-import { checkAndSetSession, clearAuthCookies } from "../lib/auth";
-import { supabase } from "../lib/supabase";
-
-const protectedRoutes = [
-    "/dashboard(|/)",
-    "/competition",
-    "/competition/**",
-];
-const redirectRoutes = ["/signin(|/)", "/register(|/)"];
-const protectedAPIRoutes = ["/api/questions(|/)", "/api/answers(|/)", "/api/profile(|/)"];
-
-export const onRequest = defineMiddleware(
-  async ({ locals, url, cookies, redirect }, next) => {
-    if (micromatch.isMatch(url.pathname, protectedRoutes)) {
-      const isLoggedIn = await checkAndSetSession(cookies, locals);
-      if (!isLoggedIn) {
-        return redirect("/signin");
-      }
-    }
-
-    if (micromatch.isMatch(url.pathname, redirectRoutes)) {
-      const isLoggedIn = await checkAndSetSession(cookies);
-      if (isLoggedIn) {
-        return redirect("/dashboard");
-      }
-    }
-
-    if (micromatch.isMatch(url.pathname, protectedAPIRoutes)) {
-      const refreshToken = cookies.get("sb-refresh-token");
-        console.log("Middleware: Checking API route:", url.pathname, refreshToken);
-
-      if (!refreshToken) {
-          return new Response(
-            JSON.stringify({
-              error: "Unauthorized",
-            }),
-            { status: 401, headers: { "Content-Type": "application/json" } },
-          );
-      }
-
-      const { data: { session }, error } = await supabase.auth.getSession();
-        console.log("Middleware: session:", session, "error:", error);
-
-        if (error || !session) {
-            clearAuthCookies(cookies);
-            return new Response(
-                JSON.stringify({
-                    error: "Unauthorized",
-                }),
-                { status: 401, headers: { "Content-Type": "application/json" } },
-            );
-        }
-
-      locals.userId = session.user.id;
-
-    }
-
-    return next();
-  },
-);
-```
-
----
-
-`src\lib\auth.ts`:
-```
-// src/lib/auth.ts
-import type { AstroCookies } from "astro";
-import { supabase } from "./supabase";
-
-export function setAuthCookies(
-  cookies: AstroCookies,
-  access_token: string,
-  refresh_token: string,
-) {
-  cookies.set("sb-access-token", access_token, {
-    sameSite: "strict",
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-  cookies.set("sb-refresh-token", refresh_token, {
-    sameSite: "strict",
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-}
-
-export function clearAuthCookies(cookies: AstroCookies) {
-  cookies.delete("sb-access-token", { path: "/" });
-  cookies.delete("sb-refresh-token", { path: "/" });
-}
-
-export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Locals) {
-    const refreshToken = cookies.get("sb-refresh-token");
-
-    if (!refreshToken) {
-        return false;
-    }
-
-    const { data: { session }, error } = await supabase.auth.getSession();
-
-    if (error || !session) {
-        clearAuthCookies(cookies);
-        return false;
-    }
-
-    if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
-        setAuthCookies(cookies, session.access_token, session.refresh_token);
-    }
-
-
-    if (locals && session.user) {
-        locals.email = session.user.email ?? "";
-        locals.name = session.user.user_metadata?.name ?? "";
-        locals.avatar_url = session.user.user_metadata?.avatar_url ?? "";
-        locals.userId = session.user.id;
-        locals.createdAt = session.user.created_at;
-        locals.school = session.user.user_metadata?.school ?? ""; // NEW
-        locals.phone = session.user.user_metadata?.phone ?? "";
-    }
-
-    return true;
-}
-```
-
----
-
-`src\pages\signin.astro`:
-```
----
-// src/pages/signin.astro
-import Base from "../layout/Base.astro";
-import AuthForm from "../components/AuthForm.astro";
-const title = "Sign in";
-
----
-
-<Base title={title}>
-  <main>
-    <section>
-      <h1>{title}</h1>
-      <AuthForm showProviderButtons />
-    </section>
-  </main>
-</Base>
-```
-
----
-
-`tsconfig.json`:
-```
-{
-  "extends": "astro/tsconfigs/strict",
-  "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist"]
+.dark {
+  --md-sys-color-primary: rgb(132 214 194);
+  --md-sys-color-surface-tint: rgb(132 214 194);
+  --md-sys-color-on-primary: rgb(0 56 46);
+  --md-sys-color-primary-container: rgb(0 81 68);
+  --md-sys-color-on-primary-container: rgb(160 242 222);
+  --md-sys-color-secondary: rgb(177 204 196);
+  --md-sys-color-on-secondary: rgb(29 53 47);
+  --md-sys-color-secondary-container: rgb(51 75 69);
+  --md-sys-color-on-secondary-container: rgb(205 232 224);
+  --md-sys-color-tertiary: rgb(170 203 228);
+  --md-sys-color-on-tertiary: rgb(17 51 72);
+  --md-sys-color-tertiary-container: rgb(42 74 95);
+  --md-sys-color-on-tertiary-container: rgb(200 230 255);
+  --md-sys-color-error: rgb(255 180 171);
+  --md-sys-color-on-error: rgb(105 0 5);
+  --md-sys-color-error-container: rgb(147 0 10);
+  --md-sys-color-on-error-container: rgb(255 218 214);
+  --md-sys-color-background: rgb(14 21 19);
+  --md-sys-color-on-background: rgb(222 228 224);
+  --md-sys-color-surface: rgb(14 21 19);
+  --md-sys-color-on-surface: rgb(222 228 224);
+  --md-sys-color-surface-variant: rgb(63 73 70);
+  --md-sys-color-on-surface-variant: rgb(191 201 196);
+  --md-sys-color-outline: rgb(137 147 143);
+  --md-sys-color-outline-variant: rgb(63 73 70);
+  --md-sys-color-shadow: rgb(0 0 0);
+  --md-sys-color-scrim: rgb(0 0 0);
+  --md-sys-color-inverse-surface: rgb(222 228 224);
+  --md-sys-color-inverse-on-surface: rgb(43 50 48);
+  --md-sys-color-inverse-primary: rgb(6 107 91);
+  --md-sys-color-primary-fixed: rgb(160 242 222);
+  --md-sys-color-on-primary-fixed: rgb(0 32 26);
+  --md-sys-color-primary-fixed-dim: rgb(132 214 194);
+  --md-sys-color-on-primary-fixed-variant: rgb(0 81 68);
+  --md-sys-color-secondary-fixed: rgb(205 232 224);
+  --md-sys-color-on-secondary-fixed: rgb(6 32 26);
+  --md-sys-color-secondary-fixed-dim: rgb(177 204 196);
+  --md-sys-color-on-secondary-fixed-variant: rgb(51 75 69);
+  --md-sys-color-tertiary-fixed: rgb(200 230 255);
+  --md-sys-color-on-tertiary-fixed: rgb(0 30 46);
+  --md-sys-color-tertiary-fixed-dim: rgb(170 203 228);
+  --md-sys-color-on-tertiary-fixed-variant: rgb(42 74 95);
+  --md-sys-color-surface-dim: rgb(14 21 19);
+  --md-sys-color-surface-bright: rgb(52 59 56);
+  --md-sys-color-surface-container-lowest: rgb(9 15 14);
+  --md-sys-color-surface-container-low: rgb(23 29 27);
+  --md-sys-color-surface-container: rgb(27 33 31);
+  --md-sys-color-surface-container-high: rgb(37 43 41);
+  --md-sys-color-surface-container-highest: rgb(48 54 52);
 }
 
 ```
 
 ---
 
-`src\lib\apiHelpers.ts`:
-```
-// src/lib/apiHelpers.ts
-import type { PostgrestError } from "@supabase/supabase-js";
-import { AuthError } from "@supabase/supabase-js";
-
-export function handleSupabaseError(error: PostgrestError, message: string) {
-  console.error(message, error);
-  return new Response(
-    JSON.stringify({
-      error: message,
-      details: error.message,
-    }),
-    { status: 500, headers: { "Content-Type": "application/json" } },
-  );
-}
-
-export function handleCountError(error: any, message: string) {
-    console.error(message, error);
-    return new Response(
-        JSON.stringify({
-            error: message,
-            details: error.message || "Unknown error",
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
-}
-
-export function handleRequestError(error: any, message: string) {
-    console.error(message, error);
-    return new Response(
-        JSON.stringify({
-          error: message,
-          details: error.message || 'Invalid Request',
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-export function handleAuthError(error: AuthError, message: string) {
-  console.error(message, error);
-  return new Response(
-    JSON.stringify({
-      error: message,
-      details: error.message,
-    }),
-    { status: 500, headers: { "Content-Type": "application/json" } },
-  );
-}
-```
-
----
-
-`src\pages\competition\index.astro`:
+`src\components\Header.astro`:
 ```
 ---
-// src/pages/competition/index.astro
-import Base from "../../layout/Base.astro";
-
----
-
-<Base title="Competition">
-  <section>
-    <h1>Competition</h1>
-    <p>Select a question to start:</p>
-    <ul>
-        <li><a href="/competition/1">Start Competition</a></li>
-    </ul>
-  </section>
-</Base>
-```
-
----
-
-`src\pages\api\auth\signin.ts`:
-```
-// src/pages/api/auth/signin.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
-import type { Provider } from "@supabase/supabase-js";
-
-export const POST: APIRoute = async ({ request, redirect }) => {
-  const formData = await request.formData();
-  const provider = formData.get("provider")?.toString();
-
-  if (provider) {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: provider as Provider,
-      options: {
-        redirectTo: import.meta.env.DEV
-          ? "http://localhost:4321/api/auth/callback"
-          : "https://faraidacademy.netlify.app/api/auth/callback",
-      },
-    });
-
-    if (error) {
-      return new Response(error.message, { status: 500 });
-    }
-
-    return redirect(data.url);
-  }
-
-  return new Response("Provider required", { status: 400 });
-};
-```
-
----
-
-`src\components\Form.astro`:
-```
----
-// src/components/Form.astro
-interface Props {
-  userName?: string;
-  userSchool?: string;
-  userPhone?: string;
-}
-
-const { userName = "", userSchool = "", userPhone = "" } = Astro.props;
----
-
-<md-dialog class="dialog" id="edit-profile">
-
-    <div slot="headline">Edit Profil</div>
-
-    <form slot="content" id="form-id" method="dialog">
-        <md-outlined-text-field label="Nama Lengkap" required minlength="4" value={userName} name="name"></md-outlined-text-field>
-        <md-outlined-text-field label="Universitas/Sekolah" required minlength="4" value={userSchool} name="school"></md-outlined-text-field>
-        <md-outlined-text-field label="Nomor Telefon" required minlength="4" type="tel" value={userPhone} name="phone"></md-outlined-text-field>
-    </form>
-
-    <div slot="actions">
-        <md-filled-button form="form-id" id="submit-button">SIMPAN</md-filled-button>
-    </div>
-</md-dialog>
-
-<script>
-    import "material/textfield/outlined-text-field";
-    import "material/button/filled-button";
-    import "material/dialog/dialog";
-
-    const submitButton = document.getElementById("submit-button");
-
-    const submitProfileForm = async () => {
-        const form = document.getElementById("form-id") as HTMLFormElement;
-        const name = (form.querySelector('[name="name"]') as HTMLInputElement).value;
-        const school = (form.querySelector('[name="school"]') as HTMLInputElement).value;
-        const phone = (form.querySelector('[name="phone"]') as HTMLInputElement).value;
-
-        try {
-            const response = await fetch("/api/profile", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ name, school, phone }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                alert(`Error updating profile: ${errorData.error} - ${errorData.details}`);
-                return;
-            }
-
-            const dialog = document.querySelector("#edit-profile") as any;
-            dialog.close = true;
-            window.location.reload();
-
-        } catch (error) {
-            console.error("Error updating profile:", error);
-            alert("An unexpected error occurred.");
-        }
-    };
-
-    if (submitButton) {
-        submitButton.addEventListener('click', submitProfileForm);
-    }
-</script>
-
-<style>
-    .dialog {
-        display: flex;
-        flex-direction: column;
-        margin: auto;
-        height:min-content;
-
-    }
-
-    #form-id {
-        display: flex;
-        flex-direction: column;
-        gap:1em;
-    }
-</style>
-```
-
----
-
-`src\env.d.ts`:
-```
-declare namespace App {
-  interface Locals {
-    email: string;
-    name: string;
-    avatar_url: string;
-    userId: string;
-    createdAt: string;
-    school: string | undefined;
-    phone: string | undefined;
-  }
-}
-```
-
----
-
-`astro.config.mjs`:
-```
-import { defineConfig } from 'astro/config';
-import netlify from '@astrojs/netlify';
-
-import sitemap from '@astrojs/sitemap';
-
-import icon from 'astro-icon';
-
-export default defineConfig({
-  image: {
-    domains: ["googleusercontent.com"],
-  },
-
-  output: 'server',
-
-  adapter: netlify({
-    edgeMiddleware: false,
-  }),
-
-  integrations: [sitemap(), icon({
-    include: {
-      "material-symbols": ["*"],
-    },
-  }),],
-});
-```
-
----
-
-`src\components\AuthForm.astro`:
-```
----
-// src/components/AuthForm.astro
-interface Props {
-  showProviderButtons?: boolean;
-}
-
-const { showProviderButtons = false } = Astro.props;
----
-
-{
-  showProviderButtons && (
-    <>
-      <p>Sign in with</p>
-      <form action="/api/auth/signin" method="post">
-        <button value="google" name="provider" type="submit">
-          Sign in with Google
-        </button>
-      </form>
-    </>
-  )
-}
-```
-
----
-
-`src\pages\api\answers.ts`:
-```
- // src/pages/api/answers.ts
- import type { APIRoute } from "astro";
- import { supabase } from "../../lib/supabase";
-import { handleSupabaseError, handleRequestError } from "../../lib/apiHelpers";
-
- export const POST: APIRoute = async ({ request, locals, redirect }) => {
- console.log("API Route /api/answers: locals:", locals); // Keep this log
- // Authentication Check (handled by middleware, but good to double-check)
- if (!locals.userId) {
-     return new Response(JSON.stringify({ error: "Unauthorized" }), {
-     status: 401,
-     headers: { 'Content-Type': 'application/json' }
-     });
- }
-
- try {
-     const { questionId, answerId } = await request.json();
-
-     // Validate input (important for security and data integrity)
-     if (!questionId || (answerId === undefined)) {
-     return new Response(
-         JSON.stringify({ error: "questionId and answerId are required" }),
-         { status: 400, headers: { 'Content-Type': 'application/json' } },
-     );
-     }
-
-     // Use upsert to insert or update the result
-     const { error } = await supabase
-     .from("results")
-     .upsert(
-         {
-         user_id: locals.userId,
-         question_id: questionId,
-         answer_id: answerId,
-         },
-         { onConflict: 'user_id,question_id' }
-     )
-     .select();
-
-     if (error) {
-        return handleSupabaseError(error, "Failed to save answer"); // Use the helper
-      }
-
-     return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    } catch (error) {
-        return handleRequestError(error, "Invalid request body"); // Use new helper
-    }
- };
-```
-
----
-
-`src\components\Profile.astro`:
-```
----
-import { Image } from "astro:assets";
-// Fetch school and phone from Astro.locals
-const { email, name, avatar_url, createdAt, school, phone } = Astro.locals;
-
-function formatDate(dateString: string | undefined) {
-  if (!dateString) {
-    return "Unknown";
-  }
-  const date = new Date(dateString);
-  return date.toLocaleDateString('id-ID', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
----
-
-<section>
-    {
-        avatar_url && (
-            <Image
-            class="avatar"
-                src={avatar_url}
-                alt={name ? `${name}'s avatar` : "User Avatar"}
-                width={64}
-                height={64}
-            />
-        )
-    }
-    <p>{name || email}</p>
-    {school && <p>Universitas/Sekolah: {school}</p>}
-    {phone && <p>Nomor Telefon: {phone}</p>}
-    <p>Terdaftar: {formatDate(createdAt)}</p>
-    <a href="/">Halaman Utama</a>
-    <a href="/api/auth/signout">Sign out</a>
-</section>
-
-<style>
-    .avatar{
-        border-radius:50%;
-    }
-</style>
-```
-
----
-
-`src\lib\supabase.ts`:
-```
-// src/lib/supabase.ts
-import { createClient } from "@supabase/supabase-js";
-
-export const supabase = createClient(
-  import.meta.env.SUPABASE_URL,
-  import.meta.env.SUPABASE_ANON_KEY,
-  {
-    auth: {
-      flowType: "pkce",
-      autoRefreshToken: true,
-      persistSession: true,
-    },
-  },
-);
-```
-
----
-
-`src\pages\dashboard.astro`:
-```
----
-// src/pages/dashboard.astro
-
-import Base from "../layout/Base.astro";
-import Form from "../components/Form.astro";
-import Profile from "../components/Profile.astro";
-const { name, school, phone } = Astro.locals;
----
-
-<Base title="Dashboard">
-  <Profile />
-  <Form userName={name} userSchool={school} userPhone={phone} />
-  <md-text-button id="edit-profile-button">EDIT PROFIL</md-text-button>
-</Base>
-
-<script>
-  import "material/button/text-button";
-  import "material/dialog/dialog";
-
-  const editProfileButton = document.getElementById("edit-profile-button");
-  const dialog = document.querySelector("#edit-profile") as any;
-
-  if (editProfileButton && dialog) {
-    editProfileButton.addEventListener('click', () => {
-      dialog.open = true;
-    });
-  }
-</script>
-
-<style>
-  md-text-button{
-    font-family: 'Open Sans Variable', sans-serif;
-  }
-</style>
-```
-
----
-
-`src\pages\api\questions.ts`:
-```
-// src/pages/api/questions.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../lib/supabase";
-// import type { PostgrestError } from "@supabase/supabase-js"; // No longer needed
-import { handleSupabaseError } from "../../lib/apiHelpers"; // Import the helper
-
-// function handleSupabaseError(error: PostgrestError) { ... } // DELETE THIS
-
-export const GET: APIRoute = async () => {
-    const { data: questions, error: questionsError } = await supabase
-        .from("questions")
-        .select("*")
-        .order("order", { ascending: true });
-
-    if (questionsError) return handleSupabaseError(questionsError, "Error fetching questions"); // Use the helper
-
-    const { data: allAnswers, error: answersError } = await supabase
-        .from("answers")
-        .select("id, question_id, is_correct");
-
-    if (answersError) return handleSupabaseError(answersError, "Error fetching answers");
-
-    const correctAnswerMap = new Map<number, number>();
-    allAnswers?.forEach((answer) => {
-        if (answer.is_correct) correctAnswerMap.set(answer.question_id, answer.id);
-    });
-
-    const questionsWithAnswers = questions.map((question) => ({
-        ...question,
-        correctAnswerId: correctAnswerMap.get(question.id) ?? null,
-    }));
-
-    return new Response(JSON.stringify(questionsWithAnswers));
-};
-
-export const POST: APIRoute = async () => {
-    return new Response(
-        JSON.stringify({ error: "Method Not Allowed" }),
-        { status: 405, headers: { "Allow": "GET" } }
-    );
-}
-```
-
----
-
-`src\components\CompetitionAnnouncement.astro`:
-```
----
+import "@fontsource-variable/eb-garamond";
 import { Icon } from "astro-icon/components";
+import { Image } from "astro:assets";
+
+interface Props {
+    isLoggedIn: boolean;
+}
+
+const { isLoggedIn } = Astro.props;
+const { avatar_url, name } = Astro.locals;
 ---
 
-<div class="card col">
-    <div class="main col">
-        <Icon name="trophy" size="2em" />
-        Olimpiade Faraid<wbr> 2025
+<header>
+    <div class="main">
+        <Icon name="Logo" />
+        <h1>FaraidAcademy</h1>
     </div>
-    <md-filled-button>DAFTAR</md-filled-button>
-</div>
+    <div class="nav row">
+        <div class="theme-switcher-container">
+            <button id="theme-toggle" aria-label="Toggle Theme">
+                <Icon
+                    id="theme-icon"
+                    name="material-symbols:light-mode-rounded"
+                />
+            </button>
+        </div>
+        {
+            isLoggedIn ? (
+                avatar_url ? (
+                    <a href="/dashboard">
+                        <Image
+                            class="avatar"
+                            src={avatar_url}
+                            alt={name ? `${name}'s avatar` : "User Avatar"}
+                            width={32}
+                            height={32}
+                            loading="lazy"
+                            format="webp"
+                        />
+                    </a>
+                ) : (
+                    <a href="/dashboard">Dashboard</a>
+                )
+            ) : (
+                <form action="/api/auth/signin" method="post">
+                    <md-text-button
+                        class="button"
+                        name="provider"
+                        value="google"
+                        type="submit"
+                    >
+                        LOGIN
+                    </md-text-button>
+                </form>
+            )
+        }
+    </div>
+</header>
+
 <script>
-    import "material/button/filled-button";
+    import "material/button/text-button";
+
+    const themeToggle = document.getElementById("theme-toggle");
+    const themeIcon = document.getElementById("theme-icon");
+    const htmlElement = document.documentElement;
+
+    function setTheme(theme: "light" | "dark") {
+        if (themeIcon === null) {
+            console.error("themeIcon element not found!");
+            return;
+        }
+
+        if (theme === "dark") {
+            htmlElement.classList.remove("light");
+            htmlElement.classList.add("dark");
+            themeIcon.setAttribute("name", "material-symbols:dark-mode-rounded"); // Corrected icon name
+            localStorage.setItem("theme", "dark");
+        } else {
+            htmlElement.classList.remove("dark");
+            htmlElement.classList.add("light");
+            themeIcon.setAttribute("name", "material-symbols:light-mode-rounded"); // Corrected icon name
+            localStorage.setItem("theme", "light");
+        }
+    }
+
+    function initializeTheme() {
+        const savedTheme = localStorage.getItem("theme");
+        const prefersDarkScheme = window.matchMedia(
+            "(prefers-color-scheme: dark)",
+        ).matches;
+
+        if (savedTheme === "dark" || savedTheme === "light") {
+            setTheme(savedTheme);
+        } else if (prefersDarkScheme) {
+            setTheme("dark");
+        } else {
+            setTheme("light");
+        }
+    }
+
+    if (themeToggle !== null) {
+        themeToggle.addEventListener("click", () => {
+            const currentTheme = localStorage.getItem("theme");
+            setTheme(currentTheme === "dark" ? "light" : "dark");
+        });
+    } else {
+        console.error("theme-toggle element not found!");
+    }
+
+    initializeTheme();
 </script>
+
 <style>
-    .card {
-        border-radius: 12px;
-        background-color: rgba(0, 255, 255, 0.342);
+    header {
+        font-family: "EB Garamond Variable", serif;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.3em;
+        position: fixed;
+        top: 0;
         padding: 1em;
-        font-size: 1.5em;
-        text-align: center;
-        gap:1em;
-        font-weight: 600;
-        backdrop-filter: blur(1px);
+        justify-content: space-between;
+        width: 100%;
+        background-color: transparent;
+        z-index: 100;
     }
 
     .main {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
         gap: 0.5em;
+    }
+    h1 {
+        font-weight: 500;
+        font-size: 1em;
+    }
+
+    header a {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .avatar {
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #ccc;
+    }
+
+    .button {
+        font-family: "Open Sans", sans-serif;
+    }
+
+    .theme-switcher-container {
+        display: flex;
+        align-items: center;
+        margin-right: 1rem;
+    }
+
+    #theme-toggle {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: var(--md-sys-color-on-surface);
+        padding:;
+    }
+
+    #theme-icon {
+        display: flex;
     }
 </style>
 

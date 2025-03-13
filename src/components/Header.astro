@@ -2,6 +2,7 @@
 import "@fontsource-variable/eb-garamond";
 import { Icon } from "astro-icon/components";
 import { Image } from "astro:assets";
+import ThemeIcon from "./ThemeIcon.astro"; // Import the new component
 
 interface Props {
     isLoggedIn: boolean;
@@ -13,39 +14,42 @@ const { avatar_url, name } = Astro.locals;
 
 <header>
     <div class="main">
-        <Icon name="Logo" />
+        <Icon name="Logo" size="1.5em" />
         <h1>FaraidAcademy</h1>
     </div>
-    {
-        isLoggedIn ? (
-            avatar_url ? (
-                <a href="/dashboard">
-                    <Image
-                        class="avatar"
-                        src={avatar_url}
-                        alt={name ? `${name}'s avatar` : "User Avatar"}
-                        width={32}
-                        height={32}
-                        loading="lazy"
-                        format="webp"
-                    />
-                </a>
+    <div class="nav row">
+        <ThemeIcon />
+        {
+            isLoggedIn ? (
+                avatar_url ? (
+                    <a href="/dashboard">
+                        <Image
+                            class="avatar"
+                            src={avatar_url}
+                            alt={name ? `${name}'s avatar` : "User Avatar"}
+                            width={32}
+                            height={32}
+                            loading="lazy"
+                            format="webp"
+                        />
+                    </a>
+                ) : (
+                    <a href="/dashboard">Dashboard</a>
+                )
             ) : (
-                <a href="/dashboard">Dashboard</a>
+                <form action="/api/auth/signin" method="post">
+                    <md-text-button
+                        class="button"
+                        name="provider"
+                        value="google"
+                        type="submit"
+                    >
+                        LOGIN
+                    </md-text-button>
+                </form>
             )
-        ) : (
-            <form action="/api/auth/signin" method="post">
-                <md-text-button
-                    class="button"
-                    name="provider"
-                    value="google"
-                    type="submit"
-                >
-                    LOGIN
-                </md-text-button>
-            </form>
-        )
-    }
+        }
+    </div>
 </header>
 
 <script>
@@ -64,30 +68,37 @@ const { avatar_url, name } = Astro.locals;
         padding: 1em;
         justify-content: space-between;
         width: 100%;
-        background-color: white;
+        background-color: transparent;
         z-index: 100;
     }
 
-    .main{
+    [data-icon="Logo"] {
+    }
+
+    .main {
         display: flex;
         flex-direction: row;
         align-items: center;
-        gap:0.5em;
+        gap: 0.5em;
+        font-size: 1em;
     }
+
     h1 {
         font-weight: 500;
         font-size: 1em;
     }
 
-    [data-icon="Logo"] {
-        font-size: 1.5em;
-    }
-
     header a {
+        display: flex;
         text-decoration: none;
         color: inherit;
+        height: min-content;
     }
-
+    .nav {
+        width: min-content;
+        height: min-content;
+        gap: 1em;
+    }
     .avatar {
         border-radius: 50%;
         object-fit: cover;

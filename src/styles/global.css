@@ -10,23 +10,20 @@ body {
     -webkit-font-smoothing: antialiased;
     font-family: "Open Sans Variable", sans-serif;
     font-size: 1rem;
-    color: var(--text-color);
-    background-color: var(--background-color);
+    color: var(--md-sys-color-on-background);
+    background-color: var(--md-sys-color-background);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100vh;
     padding: 1em;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    gap: 1em;
 }
 
-img,
-picture,
-video,
-canvas,
-svg {
-    display: block;
-    max-width: 100%;
+[data-icon] {
+    color: var(--md-sys-color-on-surface)
 }
 
 input,
@@ -64,14 +61,14 @@ h6 {
     isolation: isolate;
 }
 
-.col{
+.col {
     display: flex;
-flex-direction: column;
-align-items: center;
+    flex-direction: column;
+    align-items: center;
 }
 
-.row{
+.row {
     display: flex;
-flex-direction: row;
-align-items: center;
+    flex-direction: row;
+    align-items: center;
 }

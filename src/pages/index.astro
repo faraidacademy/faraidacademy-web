@@ -2,8 +2,7 @@
 // src/pages/index.astro
 
 import Base from "../layout/Base.astro";
-import { Image } from "astro:assets";
-import ayahLogo from "../images/ayat.svg";
+import Ayat from '../images/ayat.svg';
 import { Icon } from "astro-icon/components";
 import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro";
 ---
@@ -12,18 +11,13 @@ import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro
   <div class="main-verse col">
     <div class="verse row">
       <Icon class="flip" name="parenthesis" size="2em" />
-      <Image src={ayahLogo} alt="Quran Verse" height="70" />
+      <Ayat height={64} fill="var(--md-sys-color-on-surface)" />
       <Icon name="parenthesis" size="2em" />
     </div>
-    <p class="row">
+    <p>
       These (inheritance rules) are settled portions ordained by Allah <Icon
         name="tabarak"
       />
-      <p class="row">
-        (Pembagian warisan) Ini adalah ketetapan dari Allah <Icon
-          name="tabarak"
-        />
-      </p>
     </p>
   </div>
   <CompetitionAnnouncement></CompetitionAnnouncement>
@@ -44,7 +38,10 @@ import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro
 
     p {
       text-align: center;
-      gap: 0.3em;
     }
+
+    [data-icon="tabarak"] {
+    vertical-align: middle;
+}
   </style>
 </Base>
