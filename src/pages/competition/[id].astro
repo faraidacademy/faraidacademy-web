@@ -231,7 +231,7 @@ const formattedMoney = formatNumber(question.money);
         throw new Error(errorMessage);
       }
 
-      statusIndicator.textContent = "Saved";
+      statusIndicator.textContent = "✅ Tersimpan";
       return true;
     } catch (error) {
       console.error("Error saving answer:", error);
@@ -252,7 +252,7 @@ const formattedMoney = formatNumber(question.money);
     const target = event.target as HTMLInputElement;
 
     if (target.tagName === "MD-RADIO") {
-      statusIndicator.textContent = "Unanswered";
+      statusIndicator.textContent = "⚠ Belum Tersimpan";
       await submitAnswer(questionId, target.value);
     }
   });
