@@ -11,7 +11,7 @@ body {
     font-family: "Open Sans Variable", sans-serif;
     font-size: 1rem;
     color: var(--md-sys-color-on-background);
-    background-image: url('src/images/b1.webp');
+    background-image: url('../images/b1.webp');
     background-size: cover;
     background-position: center;
     display: flex;
@@ -91,3 +91,21 @@ h6 {
     flex-direction: row;
     align-items: center;
 }
+
+a{
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+@media (min-width: 600px) and (max-width: 839px) {
+    body {
+      font-size: 1.25em;
+    }
+  }
+
+  @media (min-width: 840px) {
+    body {
+      font-size: 1.5em;
+    }
+  }
