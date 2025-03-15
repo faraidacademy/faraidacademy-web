@@ -3,7 +3,8 @@ import Base from "../../layout/Base.astro";
 import { supabase } from "../../lib/supabase";
 import type { Question, Answer } from "../../types";
 import { Icon } from "astro-icon/components";
-
+import "../../styles/light.css";  // Import light theme
+import "../../styles/dark.css";   // Import dark theme
 const { id } = Astro.params;
 
 if (!id || isNaN(Number(id))) {
@@ -94,7 +95,7 @@ const formattedMoney = formatNumber(question.money);
 <Base title={`Question ${questionId}`}>
   <md-elevated-card class="competition-card col">
     <section class="col" dir="rtl" data-question-id={questionId}>
-      <md-filled-card class="question col">
+      <md-filled-card class="question col" >
         <p>{question.question}</p>
         {formattedMoney && <p>التركة: Rp {formattedMoney}</p>}
         <p>السؤال: كم نصيب {question.case}؟</p>
@@ -183,6 +184,8 @@ const formattedMoney = formatNumber(question.money);
   import "material/iconbutton/filled-tonal-icon-button";
   import "material/card/elevated-card";
   import "material/card/filled-card";
+
+  document.addEventListener('astro:page-load', () => {
   const statusIndicator = document.getElementById("status-indicator")!;
 
   const sectionElement = document.querySelector("section");
@@ -255,7 +258,7 @@ const formattedMoney = formatNumber(question.money);
       statusIndicator.textContent = "⚠ Belum Tersimpan";
       await submitAnswer(questionId, target.value);
     }
-  });
+  });});
 </script>
 
 <style is:global>

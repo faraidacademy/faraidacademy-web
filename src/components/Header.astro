@@ -13,10 +13,12 @@ const { avatar_url, name } = Astro.locals;
 ---
 
 <header>
-    <div class="main">
-        <Icon name="Logo" size="1.5em" />
-        <h1>FaraidAcademy</h1>
-    </div>
+    <a href="/">
+        <div class="main">
+            <Icon name="Logo" size="1.5em" />
+            <h1>FaraidAcademy</h1>
+        </div>
+        </a>
     <div class="nav row">
         <ThemeIcon />
         {
@@ -29,7 +31,6 @@ const { avatar_url, name } = Astro.locals;
                             alt={name ? `${name}'s avatar` : "User Avatar"}
                             width={32}
                             height={32}
-                            loading="lazy"
                             format="webp"
                         />
                     </a>

@@ -36,6 +36,7 @@ import { Icon } from "astro-icon/components";
 </style>
 
 <script is:inline>
+  document.addEventListener('astro:page-load', () => {
   const theme = (() => {
     const localStorageTheme = localStorage.getItem("theme");
     if (localStorageTheme === "dark" || localStorageTheme === "light") {
@@ -73,5 +74,5 @@ import { Icon } from "astro-icon/components";
     applyTheme(isDark ? "dark" : "light");
   };
 
-  document.getElementById("themeToggle")?.addEventListener("click", handleToggleClick);
+  document.getElementById("themeToggle")?.addEventListener("click", handleToggleClick);});
 </script>

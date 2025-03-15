@@ -4,7 +4,7 @@ import "../styles/global.css";
 import { checkAndSetSession } from '../lib/auth'; // Import here
 import "../styles/light.css";  // Import light theme
 import "../styles/dark.css";   // Import dark theme
-
+import { ClientRouter } from 'astro:transitions';
 
 interface Props {
   title: string;
@@ -24,6 +24,7 @@ import Footer from "../components/Footer.astro";
   <head>
     <meta charset="utf-8" />
     <title>{title}</title>
+    <ClientRouter />
     <meta name="viewport" content="width=device-width" />
   </head>
   <body>

@@ -1,6 +1,6 @@
 ---
+import { Icon } from "astro-icon/components";
 import { Image } from "astro:assets";
-// Fetch school and phone from Astro.locals
 const { email, name, avatar_url, createdAt, school, phone } = Astro.locals;
 
 function formatDate(dateString: string | undefined) {
@@ -8,37 +8,110 @@ function formatDate(dateString: string | undefined) {
     return "Unknown";
   }
   const date = new Date(dateString);
-  return date.toLocaleDateString('id-ID', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+  return date.toLocaleDateString("id-ID", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 }
 ---
 
-<section>
+<md-elevated-card class="card col">
+  {
+    avatar_url && (
+      <Image
+        class="avatar"
+        src={avatar_url}
+        alt={name ? `${name}'s avatar` : "User Avatar"}
+        width={64}
+        height={64}
+      />
+    )
+  }
+
+  <div class="name-badge col">
+    <p class="name">{name || email}</p>
+    <div class="badge row data">
+      <Icon name="material-symbols:verified-rounded" size="1.2em" /> Peserta Kompetisi
+      Faraid 2025
+    </div>
+  </div>
+
+  <div class="details col">
     {
-        avatar_url && (
-            <Image
-            class="avatar"
-                src={avatar_url}
-                alt={name ? `${name}'s avatar` : "User Avatar"}
-                width={64}
-                height={64}
-            />
-        )
+      school && (
+        <p class="data school row">
+          <Icon name="material-symbols:school-rounded" /> {school}
+        </p>
+      )
     }
-    <p>{name || email}</p>
-    {school && <p>Universitas/Sekolah: {school}</p>}
-    {phone && <p>Nomor Telefon: {phone}</p>}
-    <p>Terdaftar: {formatDate(createdAt)}</p>
-    <a href="/">Halaman Utama</a>
-    <a href="/api/auth/signout">Sign out</a>
-</section>
+    {
+      phone && (
+        <p class="data row">
+          <Icon name="material-symbols:phone-forwarded-rounded" /> {phone}
+        </p>
+      )
+    }
+    <p class="data row">
+      <Icon name="material-symbols:person-rounded" />
+      {formatDate(createdAt)}
+    </p>
+  </div>
+
+  <md-text-button id="edit-profile-button">EDIT PROFIL</md-text-button>
+</md-elevated-card>
+
+<script>
+  import "material/button/text-button";
+  import "material/card/elevated-card";
+
+  const editProfileButton = document.getElementById("edit-profile-button");
+  const dialog = document.querySelector("#edit-profile") as any;
+
+  if (editProfileButton && dialog) {
+    editProfileButton.addEventListener("click", () => {
+      dialog.open = true;
+    });
+  }
+</script>
 
 <style>
-    .avatar{
-        border-radius:50%;
-    }
+  .card {
+    padding: 1.5em;
+    gap: 1em;
+  }
+
+  .badge {
+    font-size: 0.6em;
+    padding: 5px 12px;
+    color: var(--md-sys-color-on-primary-container);
+    background-color: var(--md-sys-color-primary-container);
+    border-radius: 999px;
+  }
+
+  .name {
+    font-size: 1.5em;
+    font-weight: 600;
+  }
+
+  .school{
+    font-size: 1.1em;
+    font-weight: 600;
+  }
+
+  .details{
+    font-size: 0.7em;
+  }
+  .data {
+    gap: 0.5em;
+  }
+
+  .avatar {
+    border-radius: 50%;
+    border: 2px solid var(--md-sys-color-outline-variant);
+  }
+  md-text-button {
+    font-family: "Open Sans Variable", sans-serif;
+  }
 </style>

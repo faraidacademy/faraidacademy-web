@@ -10,12 +10,25 @@ const { showProviderButtons = false } = Astro.props;
 {
   showProviderButtons && (
     <>
-      <p>Sign in with</p>
       <form action="/api/auth/signin" method="post">
-        <button value="google" name="provider" type="submit">
-          Sign in with Google
-        </button>
+        <md-text-button
+          class="button"
+          name="provider"
+          value="google"
+          type="submit">
+          Log in with Google
+        </md-text-button>
       </form>
     </>
   )
 }
+
+<script>
+    import "material/button/text-button";
+</script>
+
+<style>
+  .button{
+        font-family: "Open Sans", sans-serif;
+    }
+</style>

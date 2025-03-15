@@ -23,7 +23,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     if (typeof phone !== 'string' || phone.length < 4) {
       return handleRequestError(new Error("Invalid phone"), "Phone must be at least 4 characters");
     }
-    // Update user metadata
+
     const { error } = await supabase.auth.updateUser({
       data: {
         name: name,

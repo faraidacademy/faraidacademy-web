@@ -1,286 +1,580 @@
 ---
 
-`src\styles\light.css`:
+`src\pages\competition\index.astro`:
 ```
-.light {
-  --md-sys-color-primary: rgb(6 107 91);
-  --md-sys-color-surface-tint: rgb(6 107 91);
-  --md-sys-color-on-primary: rgb(255 255 255);
-  --md-sys-color-primary-container: rgb(160 242 222);
-  --md-sys-color-on-primary-container: rgb(0 32 26);
-  --md-sys-color-secondary: rgb(74 99 93);
-  --md-sys-color-on-secondary: rgb(255 255 255);
-  --md-sys-color-secondary-container: rgb(205 232 224);
-  --md-sys-color-on-secondary-container: rgb(6 32 26);
-  --md-sys-color-tertiary: rgb(67 98 120);
-  --md-sys-color-on-tertiary: rgb(255 255 255);
-  --md-sys-color-tertiary-container: rgb(200 230 255);
-  --md-sys-color-on-tertiary-container: rgb(0 30 46);
-  --md-sys-color-error: rgb(186 26 26);
-  --md-sys-color-on-error: rgb(255 255 255);
-  --md-sys-color-error-container: rgb(255 218 214);
-  --md-sys-color-on-error-container: rgb(65 0 2);
-  --md-sys-color-background: rgb(245 251 247);
-  --md-sys-color-on-background: rgb(23 29 27);
-  --md-sys-color-surface: rgb(245 251 247);
-  --md-sys-color-on-surface: rgb(23 29 27);
-  --md-sys-color-surface-variant: rgb(219 229 224);
-  --md-sys-color-on-surface-variant: rgb(63 73 70);
-  --md-sys-color-outline: rgb(111 121 118);
-  --md-sys-color-outline-variant: rgb(191 201 196);
-  --md-sys-color-shadow: rgb(0 0 0);
-  --md-sys-color-scrim: rgb(0 0 0);
-  --md-sys-color-inverse-surface: rgb(43 50 48);
-  --md-sys-color-inverse-on-surface: rgb(236 242 239);
-  --md-sys-color-inverse-primary: rgb(132 214 194);
-  --md-sys-color-primary-fixed: rgb(160 242 222);
-  --md-sys-color-on-primary-fixed: rgb(0 32 26);
-  --md-sys-color-primary-fixed-dim: rgb(132 214 194);
-  --md-sys-color-on-primary-fixed-variant: rgb(0 81 68);
-  --md-sys-color-secondary-fixed: rgb(205 232 224);
-  --md-sys-color-on-secondary-fixed: rgb(6 32 26);
-  --md-sys-color-secondary-fixed-dim: rgb(177 204 196);
-  --md-sys-color-on-secondary-fixed-variant: rgb(51 75 69);
-  --md-sys-color-tertiary-fixed: rgb(200 230 255);
-  --md-sys-color-on-tertiary-fixed: rgb(0 30 46);
-  --md-sys-color-tertiary-fixed-dim: rgb(170 203 228);
-  --md-sys-color-on-tertiary-fixed-variant: rgb(42 74 95);
-  --md-sys-color-surface-dim: rgb(213 219 216);
-  --md-sys-color-surface-bright: rgb(245 251 247);
-  --md-sys-color-surface-container-lowest: rgb(255 255 255);
-  --md-sys-color-surface-container-low: rgb(239 245 241);
-  --md-sys-color-surface-container: rgb(233 239 236);
-  --md-sys-color-surface-container-high: rgb(227 234 230);
-  --md-sys-color-surface-container-highest: rgb(222 228 224);
-}
+---
+// src/pages/competition/index.astro
+import Base from "../../layout/Base.astro";
 
+---
+
+<Base title="Competition">
+  <section>
+    <h1>Competition</h1>
+    <p>Select a question to start:</p>
+    <ul>
+        <li><a href="/competition/1">Start Competition</a></li>
+    </ul>
+  </section>
+</Base>
 ```
 
 ---
 
-`src\layout\Base.astro`:
+`src\pages\api\auth\signout.ts`:
 ```
----
-import Header from "../components/Header.astro";
-import "../styles/global.css";
-import { checkAndSetSession } from '../lib/auth'; // Import here
-import "../styles/light.css";  // Import light theme
-import "../styles/dark.css";   // Import dark theme
+// src/pages/api/auth/signout.ts
+import type { APIRoute } from "astro";
+import { clearAuthCookies } from "../../../lib/auth"; // Import
 
-
-interface Props {
-  title: string;
-}
-
-const { title } = Astro.props;
-
-// Perform the login check HERE, in the layout
-const isLoggedIn = await checkAndSetSession(Astro.cookies, Astro.locals);
-
-import '@fontsource-variable/open-sans';
-
----
-
-<html lang="en">  <!--  No class initially; JS will add it. -->
-  <head>
-    <meta charset="utf-8" />
-    <title>{title}</title>
-    <meta name="viewport" content="width=device-width" />
-  </head>
-  <body>
-    <Header isLoggedIn={isLoggedIn} />
-    <slot />
-  </body>
-</html>
+export const GET: APIRoute = async ({ cookies, redirect }) => {
+  clearAuthCookies(cookies); // Use helper
+  return redirect("/signin");
+};
 ```
 
 ---
 
-`src\styles\global.css`:
+`astro.config.mjs`:
 ```
-*,
-*::before,
-*::after {
-    box-sizing: border-box;
-    margin: 0;
+import { defineConfig } from 'astro/config';
+import netlify from '@astrojs/netlify';
+
+import sitemap from '@astrojs/sitemap';
+
+import icon from 'astro-icon';
+
+export default defineConfig({
+  image: {
+    domains: ["googleusercontent.com"],
+  },
+  experimental: {
+    svg: true,
+  },
+  output: 'server',
+
+  adapter: netlify({
+    edgeMiddleware: false,
+  }),
+
+  integrations: [sitemap(), icon({
+    include: {
+      "material-symbols": ["*"],
+    },
+  }),],
+});
+```
+
+---
+
+`src\lib\auth.ts`:
+```
+// src/lib/auth.ts
+import type { AstroCookies } from "astro";
+import { supabase } from "./supabase";
+
+export function setAuthCookies(
+  cookies: AstroCookies,
+  access_token: string,
+  refresh_token: string,
+) {
+  cookies.set("sb-access-token", access_token, {
+    sameSite: "strict",
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+  cookies.set("sb-refresh-token", refresh_token, {
+    sameSite: "strict",
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
 }
 
-body {
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    font-family: "Open Sans Variable", sans-serif;
-    font-size: 1rem;
-    color: var(--md-sys-color-on-background);
-    background-color: var(--md-sys-color-background);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    padding: 1em;
-    transition: background-color 0.3s ease, color 0.3s ease;
-    gap: 1em;
+export function clearAuthCookies(cookies: AstroCookies) {
+  cookies.delete("sb-access-token", { path: "/" });
+  cookies.delete("sb-refresh-token", { path: "/" });
 }
 
-[data-icon] {
-    color: var(--md-sys-color-on-surface)
-}
+export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Locals) {
+    const refreshToken = cookies.get("sb-refresh-token");
 
-input,
-button,
-textarea,
-select {
-    font: inherit;
-}
+    if (!refreshToken) {
+        return false;
+    }
 
-p,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    overflow-wrap: break-word;
-}
+    const { data: { session }, error } = await supabase.auth.getSession();
 
-p {
-    text-wrap: pretty;
-}
+    if (error || !session) {
+        clearAuthCookies(cookies);
+        return false;
+    }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    text-wrap: balance;
-}
+    if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
+        setAuthCookies(cookies, session.access_token, session.refresh_token);
+    }
 
-#root,
-#__next {
-    isolation: isolate;
-}
 
-.col {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
+    if (locals && session.user) {
+        locals.email = session.user.email ?? "";
+        locals.name = session.user.user_metadata?.name ?? "";
+        locals.avatar_url = session.user.user_metadata?.avatar_url ?? "";
+        locals.userId = session.user.id;
+        locals.createdAt = session.user.created_at;
+        locals.school = session.user.user_metadata?.school ?? ""; // NEW
+        locals.phone = session.user.user_metadata?.phone ?? "";
+    }
 
-.row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+    return true;
 }
 ```
 
 ---
 
-`src\pages\index.astro`:
+`src\pages\api\profile.ts`:
+```
+// src/pages/api/profile.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../lib/supabase";
+import { handleRequestError, handleAuthError } from "../../lib/apiHelpers";
+
+export const POST: APIRoute = async ({ request, locals }) => {
+  if (!locals.userId) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  try {
+    const { name, school, phone } = await request.json();
+
+    if (typeof name !== 'string' || name.length < 4) {
+      return handleRequestError(new Error("Invalid name"), "Name must be at least 4 characters");
+    }
+    if (typeof school !== 'string' || school.length < 4) {
+      return handleRequestError(new Error("Invalid school"), "School must be at least 4 characters");
+    }
+    if (typeof phone !== 'string' || phone.length < 4) {
+      return handleRequestError(new Error("Invalid phone"), "Phone must be at least 4 characters");
+    }
+    // Update user metadata
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        name: name,
+        school: school,
+        phone: phone,
+      },
+    });
+
+    if (error) {
+      return handleAuthError(error, "Failed to update profile");
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+     return handleRequestError(error, "Invalid request body");
+  }
+};
+```
+
+---
+
+`src\pages\api\auth\signin.ts`:
+```
+// src/pages/api/auth/signin.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../../lib/supabase";
+import type { Provider } from "@supabase/supabase-js";
+
+export const POST: APIRoute = async ({ request, redirect }) => {
+  const formData = await request.formData();
+  const provider = formData.get("provider")?.toString();
+
+  if (provider) {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: provider as Provider,
+      options: {
+        redirectTo: import.meta.env.DEV
+          ? "http://localhost:4321/api/auth/callback"
+          : "https://faraidacademy.netlify.app/api/auth/callback",
+      },
+    });
+
+    if (error) {
+      return new Response(error.message, { status: 500 });
+    }
+
+    return redirect(data.url);
+  }
+
+  return new Response("Provider required", { status: 400 });
+};
+```
+
+---
+
+`src\middleware\index.ts`:
+```
+// src/middleware/index.ts
+import { defineMiddleware } from "astro:middleware";
+import micromatch from "micromatch";
+import { checkAndSetSession, clearAuthCookies } from "../lib/auth";
+import { supabase } from "../lib/supabase";
+
+const protectedRoutes = [
+    "/dashboard(|/)",
+    "/competition",
+    "/competition/**",
+];
+const redirectRoutes = ["/signin(|/)", "/register(|/)"];
+const protectedAPIRoutes = ["/api/questions(|/)", "/api/answers(|/)", "/api/profile(|/)"];
+
+export const onRequest = defineMiddleware(
+  async ({ locals, url, cookies, redirect }, next) => {
+    if (micromatch.isMatch(url.pathname, protectedRoutes)) {
+      const isLoggedIn = await checkAndSetSession(cookies, locals);
+      if (!isLoggedIn) {
+        return redirect("/signin");
+      }
+    }
+
+    if (micromatch.isMatch(url.pathname, redirectRoutes)) {
+      const isLoggedIn = await checkAndSetSession(cookies);
+      if (isLoggedIn) {
+        return redirect("/dashboard");
+      }
+    }
+
+    if (micromatch.isMatch(url.pathname, protectedAPIRoutes)) {
+      const refreshToken = cookies.get("sb-refresh-token");
+        console.log("Middleware: Checking API route:", url.pathname, refreshToken);
+
+      if (!refreshToken) {
+          return new Response(
+            JSON.stringify({
+              error: "Unauthorized",
+            }),
+            { status: 401, headers: { "Content-Type": "application/json" } },
+          );
+      }
+
+      const { data: { session }, error } = await supabase.auth.getSession();
+        console.log("Middleware: session:", session, "error:", error);
+
+        if (error || !session) {
+            clearAuthCookies(cookies);
+            return new Response(
+                JSON.stringify({
+                    error: "Unauthorized",
+                }),
+                { status: 401, headers: { "Content-Type": "application/json" } },
+            );
+        }
+
+      locals.userId = session.user.id;
+
+    }
+
+    return next();
+  },
+);
+```
+
+---
+
+`src\components\Profile.astro`:
 ```
 ---
-// src/pages/index.astro
-
-import Base from "../layout/Base.astro";
-import Ayat from '../images/ayat.svg';
 import { Icon } from "astro-icon/components";
-import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro";
+import { Image } from "astro:assets";
+const { email, name, avatar_url, createdAt, school, phone } = Astro.locals;
+
+function formatDate(dateString: string | undefined) {
+  if (!dateString) {
+    return "Unknown";
+  }
+  const date = new Date(dateString);
+  return date.toLocaleDateString("id-ID", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
 ---
 
-<Base title="Faraid Academy - Home">
-  <div class="main-verse col">
-    <div class="verse row">
-      <Icon class="flip" name="parenthesis" size="2em" />
-      <Ayat height={64} fill="var(--md-sys-color-on-surface)" />
-      <Icon name="parenthesis" size="2em" />
-    </div>
-    <p class="row">
-      These (inheritance rules) are settled portions ordained by Allah <Icon
-        name="tabarak"
+<md-elevated-card class="card col">
+  {
+    avatar_url && (
+      <Image
+        class="avatar"
+        src={avatar_url}
+        alt={name ? `${name}'s avatar` : "User Avatar"}
+        width={64}
+        height={64}
       />
+    )
+  }
+
+  <div class="name-badge col">
+    <p class="name">{name || email}</p>
+    <div class="badge row data">
+      <Icon name="material-symbols:verified-rounded" size="1.2em" /> Peserta Kompetisi
+      Faraid 2025
+    </div>
+  </div>
+
+  <div class="details col">
+    {
+      school && (
+        <p class="data school row">
+          <Icon name="material-symbols:school-rounded" /> {school}
+        </p>
+      )
+    }
+    {
+      phone && (
+        <p class="data row">
+          <Icon name="material-symbols:phone-forwarded-rounded" /> {phone}
+        </p>
+      )
+    }
+    <p class="data row">
+      <Icon name="material-symbols:person-rounded" />
+      {formatDate(createdAt)}
     </p>
   </div>
-  <CompetitionAnnouncement></CompetitionAnnouncement>
 
-  <style>
-    .main-verse {
-      gap: 1em;
-      font-family: "EB Garamond Variable", serif;
-    }
+  <md-text-button id="edit-profile-button">EDIT PROFIL</md-text-button>
+</md-elevated-card>
 
-    .flip {
-      transform: scaleX(-1);
-    }
+<script>
+  import "material/button/text-button";
+  import "material/card/elevated-card";
 
-    .verse {
-      gap: 1em;
-    }
+  const editProfileButton = document.getElementById("edit-profile-button");
+  const dialog = document.querySelector("#edit-profile") as any;
 
-    p {
-      text-align: center;
-      gap: 0.3em;
-    }
-  </style>
-</Base>
+  if (editProfileButton && dialog) {
+    editProfileButton.addEventListener("click", () => {
+      dialog.open = true;
+    });
+  }
+</script>
+
+<style>
+  .card {
+    padding: 1.5em;
+    gap: 1em;
+  }
+
+  .badge {
+    font-size: 0.6em;
+    padding: 5px 12px;
+    color: var(--md-sys-color-on-primary-container);
+    background-color: var(--md-sys-color-primary-container);
+    border-radius: 999px;
+  }
+
+  .name {
+    font-size: 1.5em;
+    font-weight: 600;
+  }
+
+  .school{
+    font-size: 1.1em;
+    font-weight: 600;
+  }
+
+  .details{
+    font-size: 0.7em;
+  }
+  .data {
+    gap: 0.5em;
+  }
+
+  .avatar {
+    border-radius: 50%;
+    border: 2px solid var(--md-sys-color-outline-variant);
+  }
+  md-text-button {
+    font-family: "Open Sans Variable", sans-serif;
+  }
+</style>
 
 ```
 
 ---
 
-`src\styles\dark.css`:
+`src\pages\api\auth\callback.ts`:
 ```
-.dark {
-  --md-sys-color-primary: rgb(132 214 194);
-  --md-sys-color-surface-tint: rgb(132 214 194);
-  --md-sys-color-on-primary: rgb(0 56 46);
-  --md-sys-color-primary-container: rgb(0 81 68);
-  --md-sys-color-on-primary-container: rgb(160 242 222);
-  --md-sys-color-secondary: rgb(177 204 196);
-  --md-sys-color-on-secondary: rgb(29 53 47);
-  --md-sys-color-secondary-container: rgb(51 75 69);
-  --md-sys-color-on-secondary-container: rgb(205 232 224);
-  --md-sys-color-tertiary: rgb(170 203 228);
-  --md-sys-color-on-tertiary: rgb(17 51 72);
-  --md-sys-color-tertiary-container: rgb(42 74 95);
-  --md-sys-color-on-tertiary-container: rgb(200 230 255);
-  --md-sys-color-error: rgb(255 180 171);
-  --md-sys-color-on-error: rgb(105 0 5);
-  --md-sys-color-error-container: rgb(147 0 10);
-  --md-sys-color-on-error-container: rgb(255 218 214);
-  --md-sys-color-background: rgb(14 21 19);
-  --md-sys-color-on-background: rgb(222 228 224);
-  --md-sys-color-surface: rgb(14 21 19);
-  --md-sys-color-on-surface: rgb(222 228 224);
-  --md-sys-color-surface-variant: rgb(63 73 70);
-  --md-sys-color-on-surface-variant: rgb(191 201 196);
-  --md-sys-color-outline: rgb(137 147 143);
-  --md-sys-color-outline-variant: rgb(63 73 70);
-  --md-sys-color-shadow: rgb(0 0 0);
-  --md-sys-color-scrim: rgb(0 0 0);
-  --md-sys-color-inverse-surface: rgb(222 228 224);
-  --md-sys-color-inverse-on-surface: rgb(43 50 48);
-  --md-sys-color-inverse-primary: rgb(6 107 91);
-  --md-sys-color-primary-fixed: rgb(160 242 222);
-  --md-sys-color-on-primary-fixed: rgb(0 32 26);
-  --md-sys-color-primary-fixed-dim: rgb(132 214 194);
-  --md-sys-color-on-primary-fixed-variant: rgb(0 81 68);
-  --md-sys-color-secondary-fixed: rgb(205 232 224);
-  --md-sys-color-on-secondary-fixed: rgb(6 32 26);
-  --md-sys-color-secondary-fixed-dim: rgb(177 204 196);
-  --md-sys-color-on-secondary-fixed-variant: rgb(51 75 69);
-  --md-sys-color-tertiary-fixed: rgb(200 230 255);
-  --md-sys-color-on-tertiary-fixed: rgb(0 30 46);
-  --md-sys-color-tertiary-fixed-dim: rgb(170 203 228);
-  --md-sys-color-on-tertiary-fixed-variant: rgb(42 74 95);
-  --md-sys-color-surface-dim: rgb(14 21 19);
-  --md-sys-color-surface-bright: rgb(52 59 56);
-  --md-sys-color-surface-container-lowest: rgb(9 15 14);
-  --md-sys-color-surface-container-low: rgb(23 29 27);
-  --md-sys-color-surface-container: rgb(27 33 31);
-  --md-sys-color-surface-container-high: rgb(37 43 41);
-  --md-sys-color-surface-container-highest: rgb(48 54 52);
+// src/pages/api/auth/callback.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../../lib/supabase";
+
+export const GET: APIRoute = async ({ url, cookies, redirect }) => {
+  const authCode = url.searchParams.get("code");
+
+  if (!authCode) {
+    return new Response("No code provided", { status: 400 });
+  }
+
+  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+
+  if (error) {
+    return new Response(error.message, { status: 500 });
+  }
+
+  const { access_token, refresh_token } = data.session;
+
+  cookies.set("sb-access-token", access_token, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+  cookies.set("sb-refresh-token", refresh_token, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+
+  // Create a new URL object for the /dashboard page
+  const redirectUrl = new URL('/dashboard', url.origin);
+
+  // Redirect to the cleaned URL
+  return redirect(redirectUrl.toString());
+};
+```
+
+---
+
+`src\pages\signin.astro`:
+```
+---
+// src/pages/signin.astro
+import Base from "../layout/Base.astro";
+import AuthForm from "../components/AuthForm.astro";
+const title = "Sign in";
+
+---
+
+<Base title={title}>
+  <main>
+    <section>
+      <h1>{title}</h1>
+      <AuthForm showProviderButtons />
+    </section>
+  </main>
+</Base>
+```
+
+---
+
+`src\lib\apiHelpers.ts`:
+```
+// src/lib/apiHelpers.ts
+import type { PostgrestError } from "@supabase/supabase-js";
+import { AuthError } from "@supabase/supabase-js";
+
+export function handleSupabaseError(error: PostgrestError, message: string) {
+  console.error(message, error);
+  return new Response(
+    JSON.stringify({
+      error: message,
+      details: error.message,
+    }),
+    { status: 500, headers: { "Content-Type": "application/json" } },
+  );
 }
 
+export function handleCountError(error: any, message: string) {
+    console.error(message, error);
+    return new Response(
+        JSON.stringify({
+            error: message,
+            details: error.message || "Unknown error",
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+}
+
+export function handleRequestError(error: any, message: string) {
+    console.error(message, error);
+    return new Response(
+        JSON.stringify({
+          error: message,
+          details: error.message || 'Invalid Request',
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+export function handleAuthError(error: AuthError, message: string) {
+  console.error(message, error);
+  return new Response(
+    JSON.stringify({
+      error: message,
+      details: error.message,
+    }),
+    { status: 500, headers: { "Content-Type": "application/json" } },
+  );
+}
+```
+
+---
+
+`src\lib\supabase.ts`:
+```
+// src/lib/supabase.ts
+import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  import.meta.env.SUPABASE_URL,
+  import.meta.env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      flowType: "pkce",
+      autoRefreshToken: true,
+      persistSession: true,
+    },
+  },
+);
+```
+
+---
+
+`src\pages\dashboard.astro`:
+```
+---
+// src/pages/dashboard.astro
+import Form from "../components/Form.astro"
+import Base from "../layout/Base.astro";
+import Profile from "../components/Profile.astro";
+const { name, school, phone } = Astro.locals;
+---
+
+<Base title="Dashboard">
+<Profile />
+  <md-text-button class="logout">KELUAR</md-text-button>
+<Form userName={name} userSchool={school} userPhone={phone}></Form>
+</Base>
+
+<script>
+import "material/dialog/dialog";
+import "material/button/text-button";
+</script>
+
+<style>
+md-text-button{
+    font-family: 'Open Sans Variable', sans-serif;
+    --md-text-button-label-text-color: var(--md-sys-color-error);
+}
+</style>
 ```
 
 ---
@@ -291,6 +585,7 @@ import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro
 import "@fontsource-variable/eb-garamond";
 import { Icon } from "astro-icon/components";
 import { Image } from "astro:assets";
+import ThemeIcon from "./ThemeIcon.astro"; // Import the new component
 
 interface Props {
     isLoggedIn: boolean;
@@ -301,19 +596,14 @@ const { avatar_url, name } = Astro.locals;
 ---
 
 <header>
-    <div class="main">
-        <Icon name="Logo" />
-        <h1>FaraidAcademy</h1>
-    </div>
-    <div class="nav row">
-        <div class="theme-switcher-container">
-            <button id="theme-toggle" aria-label="Toggle Theme">
-                <Icon
-                    id="theme-icon"
-                    name="material-symbols:light-mode-rounded"
-                />
-            </button>
+    <a href="/">
+        <div class="main">
+            <Icon name="Logo" size="1.5em" />
+            <h1>FaraidAcademy</h1>
         </div>
+        </a>
+    <div class="nav row">
+        <ThemeIcon />
         {
             isLoggedIn ? (
                 avatar_url ? (
@@ -349,55 +639,6 @@ const { avatar_url, name } = Astro.locals;
 
 <script>
     import "material/button/text-button";
-
-    const themeToggle = document.getElementById("theme-toggle");
-    const themeIcon = document.getElementById("theme-icon");
-    const htmlElement = document.documentElement;
-
-    function setTheme(theme: "light" | "dark") {
-        if (themeIcon === null) {
-            console.error("themeIcon element not found!");
-            return;
-        }
-
-        if (theme === "dark") {
-            htmlElement.classList.remove("light");
-            htmlElement.classList.add("dark");
-            themeIcon.setAttribute("name", "material-symbols:dark-mode-rounded"); // Corrected icon name
-            localStorage.setItem("theme", "dark");
-        } else {
-            htmlElement.classList.remove("dark");
-            htmlElement.classList.add("light");
-            themeIcon.setAttribute("name", "material-symbols:light-mode-rounded"); // Corrected icon name
-            localStorage.setItem("theme", "light");
-        }
-    }
-
-    function initializeTheme() {
-        const savedTheme = localStorage.getItem("theme");
-        const prefersDarkScheme = window.matchMedia(
-            "(prefers-color-scheme: dark)",
-        ).matches;
-
-        if (savedTheme === "dark" || savedTheme === "light") {
-            setTheme(savedTheme);
-        } else if (prefersDarkScheme) {
-            setTheme("dark");
-        } else {
-            setTheme("light");
-        }
-    }
-
-    if (themeToggle !== null) {
-        themeToggle.addEventListener("click", () => {
-            const currentTheme = localStorage.getItem("theme");
-            setTheme(currentTheme === "dark" ? "light" : "dark");
-        });
-    } else {
-        console.error("theme-toggle element not found!");
-    }
-
-    initializeTheme();
 </script>
 
 <style>
@@ -416,49 +657,41 @@ const { avatar_url, name } = Astro.locals;
         z-index: 100;
     }
 
+    [data-icon="Logo"] {
+    }
+
     .main {
         display: flex;
         flex-direction: row;
         align-items: center;
         gap: 0.5em;
+        font-size: 1em;
     }
+
     h1 {
         font-weight: 500;
         font-size: 1em;
     }
 
     header a {
+        display: flex;
         text-decoration: none;
         color: inherit;
+        height: min-content;
     }
-
+    .nav {
+        width: min-content;
+        height: min-content;
+        gap: 1em;
+    }
     .avatar {
         border-radius: 50%;
         object-fit: cover;
-        border: 2px solid #ccc;
+        border: 2px solid var(--md-sys-color-outline-variant);
     }
 
     .button {
         font-family: "Open Sans", sans-serif;
-    }
-
-    .theme-switcher-container {
-        display: flex;
-        align-items: center;
-        margin-right: 1rem;
-    }
-
-    #theme-toggle {
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 1.5rem;
-        color: var(--md-sys-color-on-surface);
-        padding:;
-    }
-
-    #theme-icon {
-        display: flex;
     }
 </style>
 

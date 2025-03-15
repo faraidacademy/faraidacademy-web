@@ -7,27 +7,19 @@ const { name, school, phone } = Astro.locals;
 ---
 
 <Base title="Dashboard">
-  <Profile />
-<Form></Form>
-  <md-text-button id="edit-profile-button">EDIT PROFIL</md-text-button>
+<Profile />
+  <md-text-button class="logout" href="/api/auth/signout">KELUAR</md-text-button>
+<Form userName={name} userSchool={school} userPhone={phone}></Form>
 </Base>
 
 <script>
-  import "material/button/text-button";
-  import "material/dialog/dialog";
-
-  const editProfileButton = document.getElementById("edit-profile-button");
-  const dialog = document.querySelector("#edit-profile") as any;
-
-  if (editProfileButton && dialog) {
-    editProfileButton.addEventListener('click', () => {
-      dialog.open = true;
-    });
-  }
+import "material/dialog/dialog";
+import "material/button/text-button";
 </script>
 
 <style>
-  md-text-button{
+md-text-button{
     font-family: 'Open Sans Variable', sans-serif;
-  }
+    --md-text-button-label-text-color: var(--md-sys-color-error);
+}
 </style>
