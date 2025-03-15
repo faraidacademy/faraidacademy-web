@@ -1,3 +1,43 @@
+Selected Files:
+---
+
+`src\lib\supabase.ts`:
+```
+// src/lib/supabase.ts
+import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  import.meta.env.SUPABASE_URL,
+  import.meta.env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      flowType: "pkce",
+      autoRefreshToken: true,
+      persistSession: true,
+    },
+  },
+);
+```
+
+---
+
+`src\types.ts`:
+```
+// src/types.ts
+export interface Question {
+  id: number;
+  question: string;
+  money: number | null;
+  case: string | null;
+}
+
+export interface Answer {
+  id: number;
+  question_id: number;
+  answer: number;
+}
+```
+
 ---
 
 `src\pages\competition\index.astro`:
@@ -35,103 +75,6 @@ export const GET: APIRoute = async ({ cookies, redirect }) => {
 
 ---
 
-`astro.config.mjs`:
-```
-import { defineConfig } from 'astro/config';
-import netlify from '@astrojs/netlify';
-
-import sitemap from '@astrojs/sitemap';
-
-import icon from 'astro-icon';
-
-export default defineConfig({
-  image: {
-    domains: ["googleusercontent.com"],
-  },
-  experimental: {
-    svg: true,
-  },
-  output: 'server',
-
-  adapter: netlify({
-    edgeMiddleware: false,
-  }),
-
-  integrations: [sitemap(), icon({
-    include: {
-      "material-symbols": ["*"],
-    },
-  }),],
-});
-```
-
----
-
-`src\lib\auth.ts`:
-```
-// src/lib/auth.ts
-import type { AstroCookies } from "astro";
-import { supabase } from "./supabase";
-
-export function setAuthCookies(
-  cookies: AstroCookies,
-  access_token: string,
-  refresh_token: string,
-) {
-  cookies.set("sb-access-token", access_token, {
-    sameSite: "strict",
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-  cookies.set("sb-refresh-token", refresh_token, {
-    sameSite: "strict",
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-}
-
-export function clearAuthCookies(cookies: AstroCookies) {
-  cookies.delete("sb-access-token", { path: "/" });
-  cookies.delete("sb-refresh-token", { path: "/" });
-}
-
-export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Locals) {
-    const refreshToken = cookies.get("sb-refresh-token");
-
-    if (!refreshToken) {
-        return false;
-    }
-
-    const { data: { session }, error } = await supabase.auth.getSession();
-
-    if (error || !session) {
-        clearAuthCookies(cookies);
-        return false;
-    }
-
-    if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
-        setAuthCookies(cookies, session.access_token, session.refresh_token);
-    }
-
-
-    if (locals && session.user) {
-        locals.email = session.user.email ?? "";
-        locals.name = session.user.user_metadata?.name ?? "";
-        locals.avatar_url = session.user.user_metadata?.avatar_url ?? "";
-        locals.userId = session.user.id;
-        locals.createdAt = session.user.created_at;
-        locals.school = session.user.user_metadata?.school ?? ""; // NEW
-        locals.phone = session.user.user_metadata?.phone ?? "";
-    }
-
-    return true;
-}
-```
-
----
-
 `src\pages\api\profile.ts`:
 ```
 // src/pages/api/profile.ts
@@ -159,7 +102,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     if (typeof phone !== 'string' || phone.length < 4) {
       return handleRequestError(new Error("Invalid phone"), "Phone must be at least 4 characters");
     }
-    // Update user metadata
+
     const { error } = await supabase.auth.updateUser({
       data: {
         name: name,
@@ -184,36 +127,195 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
 ---
 
-`src\pages\api\auth\signin.ts`:
+`src\components\Countdown.astro`:
 ```
-// src/pages/api/auth/signin.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
-import type { Provider } from "@supabase/supabase-js";
+---
+const targetDate: Date = new Date('April 25, 2025 00:00:00 GMT+0000');
+const targetTimestamp: number = targetDate.getTime();
 
-export const POST: APIRoute = async ({ request, redirect }) => {
-  const formData = await request.formData();
-  const provider = formData.get("provider")?.toString();
+interface Props{
+  preffix?: string;
+  suffix?: string
+}
 
-  if (provider) {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: provider as Provider,
-      options: {
-        redirectTo: import.meta.env.DEV
-          ? "http://localhost:4321/api/auth/callback"
-          : "https://faraidacademy.netlify.app/api/auth/callback",
-      },
-    });
+const {preffix, suffix} = Astro.props;
 
-    if (error) {
-      return new Response(error.message, { status: 500 });
+---
+
+<p class="countdown" data-target={targetTimestamp}>
+  {preffix}<span class="countdown-text"></span>{suffix}
+</p>
+
+<style>
+  .countdown {
+    font-size: 0.7em;
+  }
+</style>
+
+<script>
+  const countdownElement = document.querySelector('.countdown') as HTMLParagraphElement;
+  const targetTimestamp = parseInt(countdownElement.dataset.target || '0', 10);
+  const countdownTextSpan = countdownElement.querySelector('.countdown-text') as HTMLSpanElement;
+
+  function updateCountdown() {
+    const now: number = new Date().getTime();
+    const timeLeft: number = targetTimestamp - now;
+
+    if (timeLeft <= 0) {
+      countdownTextSpan.textContent = 'Countdown finished!';
+      return;
     }
 
-    return redirect(data.url);
+    const days: number = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+    const hours: number = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes: number = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds: number = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+    const countdownString: string = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+
+    countdownTextSpan.textContent = countdownString;
+
+    setTimeout(updateCountdown, 1000);
   }
 
-  return new Response("Provider required", { status: 400 });
-};
+  updateCountdown();
+
+</script>
+```
+
+---
+
+`src\lib\apiHelpers.ts`:
+```
+// src/lib/apiHelpers.ts
+import type { PostgrestError } from "@supabase/supabase-js";
+import { AuthError } from "@supabase/supabase-js";
+
+export function handleSupabaseError(error: PostgrestError, message: string) {
+  console.error(message, error);
+  return new Response(
+    JSON.stringify({
+      error: message,
+      details: error.message,
+    }),
+    { status: 500, headers: { "Content-Type": "application/json" } },
+  );
+}
+
+export function handleCountError(error: any, message: string) {
+    console.error(message, error);
+    return new Response(
+        JSON.stringify({
+            error: message,
+            details: error.message || "Unknown error",
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+}
+
+export function handleRequestError(error: any, message: string) {
+    console.error(message, error);
+    return new Response(
+        JSON.stringify({
+          error: message,
+          details: error.message || 'Invalid Request',
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+export function handleAuthError(error: AuthError, message: string) {
+  console.error(message, error);
+  return new Response(
+    JSON.stringify({
+      error: message,
+      details: error.message,
+    }),
+    { status: 500, headers: { "Content-Type": "application/json" } },
+  );
+}
+```
+
+---
+
+`src\components\CompetitionAnnouncement.astro`:
+```
+---
+import { Icon } from "astro-icon/components";
+import Countdown from "./Countdown.astro";
+
+interface Props {
+    isLoggedIn: boolean;
+}
+
+const { isLoggedIn } = Astro.props;
+---
+
+<md-outlined-card class="card col">
+    <div class="main col">
+        <Icon name="trophy" size="3em" />
+        Faraid Competition 2025
+    </div>
+    <p>Pendaftaran ditutup dalam:</p>
+    <Countdown />
+    {isLoggedIn ? (
+        <md-filled-button href="/competition">JOIN</md-filled-button>
+    ) : (
+        <form action="/api/auth/signin" method="post">
+            <md-filled-button type="submit" name="provider" value="google">
+                JOIN
+            </md-filled-button>
+        </form>
+    )}
+</md-outlined-card>
+
+<script>
+    import "material/button/filled-button";
+    import "material/card/outlined-card";
+    import "material/card/elevated-card";
+    import "material/card/filled-card";
+</script>
+
+<style>
+    .card {
+        position: relative;
+        padding: 1em;
+        font-size: 1.3em;
+        text-align: center;
+        gap: 0.5em;
+        font-weight: 500;
+        backdrop-filter: blur(1px);
+        max-width: 90%;
+        min-width: 80%;
+        justify-content: space-between;
+        --_container-shape: 28px;
+        --_container-color: var(--md-sys-color-surface-variant);
+        backdrop-filter: blur(4px);
+    }
+
+    .main {
+        gap: 0.5em;
+        font-weight: 600;
+    }
+
+    .card > p {
+        font-size: 0.5em;
+        opacity: 0.5;
+    }
+
+    @media (min-width: 600px) {
+        .card {
+            flex-direction: row;
+            align-items: center;
+            gap: 1em;
+        }
+
+        .main {
+            flex-direction: row;
+            align-items: center;
+        }
+    }
+</style>
 ```
 
 ---
@@ -283,6 +385,1301 @@ export const onRequest = defineMiddleware(
     return next();
   },
 );
+```
+
+---
+
+`src\components\Form.astro`:
+```
+---
+// src/components/Form.astro
+interface Props {
+  userName?: string;
+  userSchool?: string;
+  userPhone?: string;
+}
+
+const { userName = "", userSchool = "", userPhone = "" } = Astro.props;
+---
+
+<md-dialog class="dialog" id="edit-profile">
+
+    <div slot="headline">Edit Profil</div>
+
+    <form slot="content" id="form-id" method="dialog">
+        <md-outlined-text-field label="Nama Lengkap" required minlength="4" value={userName} name="name"></md-outlined-text-field>
+        <md-outlined-text-field label="Universitas/Sekolah" required minlength="4" value={userSchool} name="school"></md-outlined-text-field>
+        <md-outlined-text-field label="Nomor Telefon" required minlength="4" type="tel" value={userPhone} name="phone"></md-outlined-text-field>
+
+    </form>
+
+    <div slot="actions">
+        <md-filled-button form="form-id" id="submit-button">SIMPAN</md-filled-button>
+    </div>
+</md-dialog>
+
+<script>
+    import "material/textfield/outlined-text-field";
+    import "material/button/filled-button";
+    import "material/dialog/dialog";
+
+    const submitButton = document.getElementById("submit-button");
+
+    const submitProfileForm = async () => {
+        const form = document.getElementById("form-id") as HTMLFormElement;
+        const name = (form.querySelector('[name="name"]') as HTMLInputElement).value;
+        const school = (form.querySelector('[name="school"]') as HTMLInputElement).value;
+        const phone = (form.querySelector('[name="phone"]') as HTMLInputElement).value;
+
+        try {
+            const response = await fetch("/api/profile", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ name, school, phone }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                alert(`Error updating profile: ${errorData.error} - ${errorData.details}`);
+                return;
+            }
+
+            const dialog = document.querySelector("#edit-profile") as any;
+            dialog.close = true;
+            window.location.reload();
+
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            alert("An unexpected error occurred.");
+        }
+    };
+
+    if (submitButton) {
+        submitButton.addEventListener('click', submitProfileForm);
+    }
+</script>
+
+<style>
+    .dialog {
+        display: flex;
+        flex-direction: column;
+        margin: auto;
+        height:min-content;
+        position: absolute;
+
+    }
+
+    #form-id {
+        display: flex;
+        flex-direction: column;
+        gap:1em;
+    }
+</style>
+```
+
+---
+
+`src\pages\api\answers.ts`:
+```
+ // src/pages/api/answers.ts
+ import type { APIRoute } from "astro";
+ import { supabase } from "../../lib/supabase";
+import { handleSupabaseError, handleRequestError } from "../../lib/apiHelpers";
+
+ export const POST: APIRoute = async ({ request, locals, redirect }) => {
+ console.log("API Route /api/answers: locals:", locals); // Keep this log
+ // Authentication Check (handled by middleware, but good to double-check)
+ if (!locals.userId) {
+     return new Response(JSON.stringify({ error: "Unauthorized" }), {
+     status: 401,
+     headers: { 'Content-Type': 'application/json' }
+     });
+ }
+
+ try {
+     const { questionId, answerId } = await request.json();
+
+     // Validate input (important for security and data integrity)
+     if (!questionId || (answerId === undefined)) {
+     return new Response(
+         JSON.stringify({ error: "questionId and answerId are required" }),
+         { status: 400, headers: { 'Content-Type': 'application/json' } },
+     );
+     }
+
+     // Use upsert to insert or update the result
+     const { error } = await supabase
+     .from("results")
+     .upsert(
+         {
+         user_id: locals.userId,
+         question_id: questionId,
+         answer_id: answerId,
+         },
+         { onConflict: 'user_id,question_id' }
+     )
+     .select();
+
+     if (error) {
+        return handleSupabaseError(error, "Failed to save answer"); // Use the helper
+      }
+
+     return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    } catch (error) {
+        return handleRequestError(error, "Invalid request body"); // Use new helper
+    }
+ };
+```
+
+---
+
+`src\lib\auth.ts`:
+```
+// src/lib/auth.ts
+import type { AstroCookies } from "astro";
+import { supabase } from "./supabase";
+
+export function setAuthCookies(
+  cookies: AstroCookies,
+  access_token: string,
+  refresh_token: string,
+) {
+  cookies.set("sb-access-token", access_token, {
+    sameSite: "strict",
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+  cookies.set("sb-refresh-token", refresh_token, {
+    sameSite: "strict",
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+}
+
+export function clearAuthCookies(cookies: AstroCookies) {
+  cookies.delete("sb-access-token", { path: "/" });
+  cookies.delete("sb-refresh-token", { path: "/" });
+}
+
+export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Locals) {
+    const refreshToken = cookies.get("sb-refresh-token");
+
+    if (!refreshToken) {
+        return false;
+    }
+
+    const { data: { session }, error } = await supabase.auth.getSession();
+
+    if (error || !session) {
+        clearAuthCookies(cookies);
+        return false;
+    }
+
+    if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
+        setAuthCookies(cookies, session.access_token, session.refresh_token);
+    }
+
+
+    if (locals && session.user) {
+        locals.email = session.user.email ?? "";
+        locals.name = session.user.user_metadata?.name ?? "";
+        locals.avatar_url = session.user.user_metadata?.avatar_url ?? "";
+        locals.userId = session.user.id;
+        locals.createdAt = session.user.created_at;
+        locals.school = session.user.user_metadata?.school ?? ""; // NEW
+        locals.phone = session.user.user_metadata?.phone ?? "";
+    }
+
+    return true;
+}
+```
+
+---
+
+`astro.config.mjs`:
+```
+import { defineConfig } from 'astro/config';
+import netlify from '@astrojs/netlify';
+
+import sitemap from '@astrojs/sitemap';
+
+import icon from 'astro-icon';
+
+export default defineConfig({
+  image: {
+    domains: ["googleusercontent.com"],
+  },
+  experimental: {
+    svg: true,
+  },
+  output: 'server',
+
+  adapter: netlify({
+    edgeMiddleware: false,
+  }),
+
+  integrations: [sitemap(), icon({
+    include: {
+      "material-symbols": ["*"],
+    },
+  }),],
+});
+```
+
+---
+
+`src\pages\dashboard.astro`:
+```
+---
+// src/pages/dashboard.astro
+import Form from "../components/Form.astro"
+import Base from "../layout/Base.astro";
+import Profile from "../components/Profile.astro";
+const { name, school, phone } = Astro.locals;
+---
+
+<Base title="Dashboard">
+<Profile />
+  <md-text-button class="logout" href="/api/auth/signout">KELUAR</md-text-button>
+<Form userName={name} userSchool={school} userPhone={phone}></Form>
+</Base>
+
+<script>
+import "material/dialog/dialog";
+import "material/button/text-button";
+</script>
+
+<style>
+md-text-button{
+    font-family: 'Open Sans Variable', sans-serif;
+    --md-text-button-label-text-color: var(--md-sys-color-error);
+}
+</style>
+```
+
+---
+
+`src\components\Footer.astro`:
+```
+---
+import { Icon } from "astro-icon/components";
+
+const socialMedia = [
+    { name: "fa6-brands:square-twitter", url: "https://x.com/example" }, // Changed from twitter.com to x.com
+    { name: "fa6-brands:square-facebook", url: "https://facebook.com/example" },
+    { name: "fa6-brands:square-whatsapp", url: "https://wa.me/example" }, //  Use wa.me for WhatsApp
+    { name: "fa6-brands:telegram", url: "https://t.me/example" }, // Use t.me for Telegram
+];
+---
+
+<footer class="col">
+    <div class="icons">
+        {
+            socialMedia.map((social) => (
+                <a
+                    href={social.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Link to our ${social.name.split(":")[1]} page`}
+                >
+                    <Icon name={social.name} size={12} />
+                </a>
+            ))
+        }
+    </div>
+    <div class="copy">&copy; 2025, Faraid Academy. All rights reserved.</div>
+</footer>
+
+<style>
+    footer {
+        position: absolute;
+        bottom: 0;
+        padding: 0.5em;
+        opacity: 0.5;
+    }
+    .icons {
+        display: flex;
+        gap: 0.5em;
+    }
+    .icons a {
+        color: inherit;
+        text-decoration: none;
+        transition: color 0.2s ease;
+        display: inline-block;
+    }
+    .icons a:hover {
+        color: #007bff;
+        transform: scale(1.1);
+    }
+
+    .copy{
+        font-size:0.5em;
+    }
+</style>
+
+```
+
+---
+
+`src\pages\api\questions.ts`:
+```
+// src/pages/api/questions.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../lib/supabase";
+// import type { PostgrestError } from "@supabase/supabase-js"; // No longer needed
+import { handleSupabaseError } from "../../lib/apiHelpers"; // Import the helper
+
+// function handleSupabaseError(error: PostgrestError) { ... } // DELETE THIS
+
+export const GET: APIRoute = async () => {
+    const { data: questions, error: questionsError } = await supabase
+        .from("questions")
+        .select("*")
+        .order("order", { ascending: true });
+
+    if (questionsError) return handleSupabaseError(questionsError, "Error fetching questions"); // Use the helper
+
+    const { data: allAnswers, error: answersError } = await supabase
+        .from("answers")
+        .select("id, question_id, is_correct");
+
+    if (answersError) return handleSupabaseError(answersError, "Error fetching answers");
+
+    const correctAnswerMap = new Map<number, number>();
+    allAnswers?.forEach((answer) => {
+        if (answer.is_correct) correctAnswerMap.set(answer.question_id, answer.id);
+    });
+
+    const questionsWithAnswers = questions.map((question) => ({
+        ...question,
+        correctAnswerId: correctAnswerMap.get(question.id) ?? null,
+    }));
+
+    return new Response(JSON.stringify(questionsWithAnswers));
+};
+
+export const POST: APIRoute = async () => {
+    return new Response(
+        JSON.stringify({ error: "Method Not Allowed" }),
+        { status: 405, headers: { "Allow": "GET" } }
+    );
+}
+```
+
+---
+
+`src\pages\api\auth\callback.ts`:
+```
+// src/pages/api/auth/callback.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../../lib/supabase";
+
+export const GET: APIRoute = async ({ url, cookies, redirect }) => {
+  const authCode = url.searchParams.get("code");
+
+  if (!authCode) {
+    return new Response("No code provided", { status: 400 });
+  }
+
+  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+
+  if (error) {
+    return new Response(error.message, { status: 500 });
+  }
+
+  const { access_token, refresh_token } = data.session;
+
+  cookies.set("sb-access-token", access_token, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+  cookies.set("sb-refresh-token", refresh_token, {
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  });
+
+  // Create a new URL object for the /dashboard page
+  const redirectUrl = new URL('/dashboard', url.origin);
+
+  // Redirect to the cleaned URL
+  return redirect(redirectUrl.toString());
+};
+```
+
+---
+
+`src\pages\api\auth\signin.ts`:
+```
+// src/pages/api/auth/signin.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../../lib/supabase";
+import type { Provider } from "@supabase/supabase-js";
+
+export const POST: APIRoute = async ({ request, redirect }) => {
+  const formData = await request.formData();
+  const provider = formData.get("provider")?.toString();
+
+  if (provider) {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: provider as Provider,
+      options: {
+        redirectTo: import.meta.env.DEV
+          ? "http://localhost:4321/api/auth/callback"
+          : "https://faraidacademy.netlify.app/api/auth/callback",
+      },
+    });
+
+    if (error) {
+      return new Response(error.message, { status: 500 });
+    }
+
+    return redirect(data.url);
+  }
+
+  return new Response("Provider required", { status: 400 });
+};
+```
+
+---
+
+`src\components\Header.astro`:
+```
+---
+import "@fontsource-variable/eb-garamond";
+import { Icon } from "astro-icon/components";
+import { Image } from "astro:assets";
+import ThemeIcon from "./ThemeIcon.astro"; // Import the new component
+
+interface Props {
+    isLoggedIn: boolean;
+}
+
+const { isLoggedIn } = Astro.props;
+const { avatar_url, name } = Astro.locals;
+---
+
+<header>
+    <a href="/">
+        <div class="main">
+            <Icon name="Logo" size="1.5em" />
+            <h1>FaraidAcademy</h1>
+        </div>
+        </a>
+    <div class="nav row">
+        <ThemeIcon />
+        {
+            isLoggedIn ? (
+                avatar_url ? (
+                    <a href="/dashboard">
+                        <Image
+                            class="avatar"
+                            src={avatar_url}
+                            alt={name ? `${name}'s avatar` : "User Avatar"}
+                            width={32}
+                            height={32}
+                            format="webp"
+                        />
+                    </a>
+                ) : (
+                    <a href="/dashboard">Dashboard</a>
+                )
+            ) : (
+                <form action="/api/auth/signin" method="post">
+                    <md-text-button
+                        class="button"
+                        name="provider"
+                        value="google"
+                        type="submit"
+                    >
+                        LOGIN
+                    </md-text-button>
+                </form>
+            )
+        }
+    </div>
+</header>
+
+<script>
+    import "material/button/text-button";
+</script>
+
+<style>
+    header {
+        font-family: "EB Garamond Variable", serif;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.3em;
+        position: fixed;
+        top: 0;
+        padding: 1em;
+        justify-content: space-between;
+        width: 100%;
+        background-color: transparent;
+        z-index: 100;
+    }
+
+    [data-icon="Logo"] {
+    }
+
+    .main {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5em;
+        font-size: 1em;
+    }
+
+    h1 {
+        font-weight: 500;
+        font-size: 1em;
+    }
+
+    header a {
+        display: flex;
+        text-decoration: none;
+        color: inherit;
+        height: min-content;
+    }
+    .nav {
+        width: min-content;
+        height: min-content;
+        gap: 1em;
+    }
+    .avatar {
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--md-sys-color-outline-variant);
+    }
+
+    .button {
+        font-family: "Open Sans", sans-serif;
+    }
+</style>
+
+```
+
+---
+
+`src\pages\competition\[id].astro`:
+```
+---
+import Base from "../../layout/Base.astro";
+import { supabase } from "../../lib/supabase";
+import type { Question, Answer } from "../../types";
+import { Icon } from "astro-icon/components";
+import "../../styles/light.css";  // Import light theme
+import "../../styles/dark.css";   // Import dark theme
+const { id } = Astro.params;
+
+if (!id || isNaN(Number(id))) {
+  return Astro.redirect("/404");
+}
+
+const questionId = Number(id);
+
+const { data: questionData, error: questionError } = await supabase
+  .from("questions")
+  .select("id, question, money, case")
+  .eq("id", questionId)
+  .single();
+
+if (questionError) {
+  return Astro.redirect("/404");
+}
+
+if (!questionData) {
+  return Astro.redirect("/404");
+}
+
+const { data: answersData, error: answersError } = await supabase
+  .from("answers")
+  .select("id, question_id, answer")
+  .eq("question_id", questionId);
+
+if (answersError) {
+  return Astro.redirect("/404");
+}
+
+function shuffleArray(array: any[]) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+const question: Question = questionData;
+const answers: Answer[] = answersData || [];
+shuffleArray(answers);
+
+const totalQuestionCount = 47;
+
+let userResult = undefined;
+let userHasAnswered = false;
+
+if (Astro.locals.userId) {
+  const { data: resultExistsData, error: resultExistsError } = await supabase
+    .from("results")
+    .select("id")
+    .eq("user_id", Astro.locals.userId)
+    .eq("question_id", questionId)
+    .single();
+
+  if (resultExistsError && resultExistsError.code !== "PGRST116") {
+    console.error("Error checking if user has answered:", resultExistsError);
+  } else {
+    userHasAnswered = !!resultExistsData;
+  }
+
+  if (userHasAnswered) {
+    const { data: resultData, error: resultError } = await supabase
+      .from("results")
+      .select("answer_id")
+      .eq("user_id", Astro.locals.userId)
+      .eq("question_id", questionId)
+      .single();
+
+    if (resultError && resultError.code !== "PGRST116") {
+      console.error("Error fetching user result:", resultError);
+    } else if (resultData) {
+      userResult = resultData.answer_id;
+    }
+  }
+}
+
+function formatNumber(num: number | null | undefined): string {
+  if (num === null || num === undefined) {
+    return "";
+  }
+  return num.toLocaleString("de-DE");
+}
+
+const formattedMoney = formatNumber(question.money);
+---
+
+<Base title={`Question ${questionId}`}>
+  <md-elevated-card class="competition-card col">
+    <section class="col" dir="rtl" data-question-id={questionId}>
+      <md-filled-card class="question col" >
+        <p>{question.question}</p>
+        {formattedMoney && <p>التركة: Rp {formattedMoney}</p>}
+        <p>السؤال: كم نصيب {question.case}؟</p>
+      </md-filled-card>
+
+      <div class="answers col">
+        <div
+          class="answers-list col"
+          role="radiogroup"
+          aria-label="Select an Answer"
+        >
+          {
+            answers.map((answer) => (
+              <div class="radio-group">
+                <md-radio
+                  id={`answer-${answer.id}`}
+                  name="question-answers"
+                  value={String(answer.id)}
+                  checked={userResult === answer.id}
+                  aria-label={answer.answer}
+                />
+                <label for={`answer-${answer.id}`}>
+                  Rp {formatNumber(Number(answer.answer))}
+                </label>
+              </div>
+            ))
+          }
+          <div class="radio-group null">
+            <md-radio
+              id="answer-null"
+              name="question-answers"
+              value="null"
+              checked={userResult === null}
+              aria-label="None of the Above"
+            >
+            </md-radio>
+            <label for="answer-null">لا شيء مما سبق</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="navigation">
+        {
+          questionId > 1 && (
+            <md-filled-tonal-icon-button
+              href={`/competition/${questionId - 1}`}
+            >
+              <Icon name="material-symbols:arrow-forward-rounded" size="2em" />
+            </md-filled-tonal-icon-button>
+          )
+        }
+
+        <p>
+          <span id="status-indicator">
+            {
+              userHasAnswered ? (
+                <>
+                  <Icon name="material-symbols:check-circle-rounded" />
+                  &nbsp;Tersimpan
+                </>
+              ) : (
+                <>
+                  <Icon name="material-symbols:warning-rounded" />
+                  &nbsp;Belum Tersimpan
+                </>
+              )
+            }
+          </span>
+        </p>
+        {
+          questionId < totalQuestionCount && (
+            <md-filled-tonal-icon-button
+              href={`/competition/${questionId + 1}`}
+            >
+              <Icon name="material-symbols:arrow-back-rounded" size="2em" />
+            </md-filled-tonal-icon-button>
+          )
+        }
+      </div>
+    </section></md-elevated-card
+  >
+</Base>
+
+<script>
+  import "material/radio/radio";
+  import "material/iconbutton/filled-tonal-icon-button";
+  import "material/card/elevated-card";
+  import "material/card/filled-card";
+
+  document.addEventListener('astro:page-load', () => {
+  const statusIndicator = document.getElementById("status-indicator")!;
+
+  const sectionElement = document.querySelector("section");
+  const questionId = sectionElement
+    ? parseInt(sectionElement.dataset.questionId || "", 10)
+    : null;
+
+  async function submitAnswer(
+    questionId: number | null,
+    answerId: number | null | string,
+  ) {
+    if (questionId === null) {
+      console.error("Question ID not found!");
+      statusIndicator.textContent = "error";
+      return;
+    }
+
+    const parsedAnswerId =
+      answerId === "null"
+        ? null
+        : typeof answerId === "string"
+          ? parseInt(answerId, 10)
+          : answerId;
+
+    if (parsedAnswerId === null && answerId !== "null") {
+      console.error("Invalid answer ID:", answerId);
+      statusIndicator.textContent = "error";
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/answers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          questionId: questionId,
+          answerId: parsedAnswerId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorMessage = errorData.error || "Failed to save answer";
+        throw new Error(errorMessage);
+      }
+
+      statusIndicator.textContent = "✅ Tersimpan";
+      return true;
+    } catch (error) {
+      console.error("Error saving answer:", error);
+      statusIndicator.textContent = "error";
+
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert("An unexpected error occurred.");
+      }
+      return false;
+    }
+  }
+
+  const radioGroup = document.querySelector('[role="radiogroup"]');
+
+  radioGroup?.addEventListener("change", async (event) => {
+    const target = event.target as HTMLInputElement;
+
+    if (target.tagName === "MD-RADIO") {
+      statusIndicator.textContent = "⚠ Belum Tersimpan";
+      await submitAnswer(questionId, target.value);
+    }
+  });});
+</script>
+
+<style is:global>
+  body {
+    background-image: none;
+    background-color: var(--md-sys-color-surface);
+  }
+  body::before {
+    display: none;
+  }
+</style>
+
+<style lang="css">
+  .competition-card {
+    width: 90%;
+    background-color: none;
+    font-family: "Amiri", serif;
+    padding: 1em;
+  }
+
+  section {
+    width: 100%;
+  }
+
+  .question {
+    gap: 1em;
+    width: 100%;
+    align-items: flex-start;
+    padding: 1em;
+  }
+
+  .answers {
+    width: 100%;
+    align-items: flex-start;
+    padding: 1em;
+  }
+
+  .navigation[data-astro-cid-t6c3q7ka] {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+  }
+  .answers-list {
+    align-items: flex-start;
+    gap: 0.8em;
+  }
+
+  .radio-group {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    font-family: "EB Garamond Variable", serif;
+  }
+
+  md-radio {
+    display: inline-flex;
+  }
+
+  .null {
+    font-family: "Amiri", serif;
+  }
+
+  #status-indicator {
+    display: flex;
+    align-items: center;
+    color: var(--md-sys-color-on-surface);
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.7em;
+  }
+
+  [data-icon="material-symbols:check-circle-rounded"] {
+    color: var(--md-sys-color-primary);
+  }
+
+  [data-icon="material-symbols:warning-rounded"] {
+    color: var(--md-sys-color-error);
+  }
+
+  @media (min-width: 600px) and (max-width: 839px) {
+    .competition-card {
+      font-size: 1.2em;
+    }
+  }
+
+  @media (min-width: 840px) {
+    .competition-card {
+      font-size: 0.8em;
+    }
+  }
+</style>
+
+```
+
+---
+
+`tsconfig.json`:
+```
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"]
+}
+
+```
+
+---
+
+`src\pages\signin.astro`:
+```
+---
+// src/pages/signin.astro
+import Base from "../layout/Base.astro";
+import AuthForm from "../components/AuthForm.astro";
+const title = "Log in";
+
+---
+
+<Base title={title}>
+  <main>
+    <section>
+      <AuthForm showProviderButtons />
+    </section>
+  </main>
+</Base>
+```
+
+---
+
+`src\layout\Base.astro`:
+```
+---
+import Header from "../components/Header.astro";
+import "../styles/global.css";
+import { checkAndSetSession } from '../lib/auth'; // Import here
+import "../styles/light.css";  // Import light theme
+import "../styles/dark.css";   // Import dark theme
+import { ClientRouter } from 'astro:transitions';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+
+// Perform the login check HERE, in the layout
+const isLoggedIn = await checkAndSetSession(Astro.cookies, Astro.locals);
+
+import '@fontsource-variable/open-sans';
+import Footer from "../components/Footer.astro";
+
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{title}</title>
+    <ClientRouter />
+    <meta name="viewport" content="width=device-width" />
+  </head>
+  <body>
+    <Header isLoggedIn={isLoggedIn} />
+    <slot />
+    <Footer />
+  </body>
+</html>
+```
+
+---
+
+`src\pages\index.astro`:
+```
+---
+// src/pages/index.astro
+
+import Base from "../layout/Base.astro";
+import Ayat from "../images/ayat.svg";
+import { Icon } from "astro-icon/components";
+import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro";
+const { isLoggedIn } = Astro.props;
+---
+
+<Base title="Faraid Academy - Home">
+  <div class="main-text col">
+    <div class="main-verse col">
+      <div class="verse row">
+        <Icon class="flip" name="parenthesis" size="1.5em" />
+        <Ayat height="3em" ; fill="var(--md-sys-color-on-surface)" />
+        <Icon name="parenthesis" size="1.5em" />
+      </div>
+      <div class="translation col">
+        <p>
+          These (inheritance rules) are settled portions ordained by Allah <Icon
+            name="tabarak"
+          />
+        </p>
+      </div>
+    </div>
+    <div class="main-hadith col">
+      <div class="hadith" dir="rtl">
+        <p>&laquo;ألحقوا الفرائض بأهلها&raquo;</p>
+      </div>
+      <p class="translation">
+        Assign the prescribed shares [of inheritance] to the ones whom they
+        rightfully belong
+      </p>
+    </div>
+  </div>
+  <CompetitionAnnouncement isLoggedIn={isLoggedIn} />
+
+  <style>
+    p {
+      text-align: center;
+    }
+    .main-text {
+      gap: 2em;
+      font-family: "EB Garamond Variable", serif;
+      margin: 0 0 4em;
+    }
+    .main-verse {
+      gap: 1em;
+      font-size: 1.1em;
+    }
+
+    .verse {
+      gap: 1em;
+      justify-content: center;
+    }
+
+    .translation {
+      text-wrap: pretty;
+      font-size: 0.9em;
+    }
+
+    .flip {
+      transform: scaleX(-1);
+    }
+
+    .main-hadith {
+      display: none;
+      font-size: 0.6em;
+    }
+
+    .hadith {
+      font-family: "Amiri", serif;
+      font-size: 1.3em;
+    }
+
+    [data-icon="tabarak"] {
+      vertical-align: middle;
+    }
+
+    @media (min-width: 900px) {
+      body {
+        font-size: 1.5em;
+      }
+
+      .main-hadith{
+        display: flex;
+      }
+    }
+  </style>
+</Base>
+
+```
+
+---
+
+`src\components\AuthForm.astro`:
+```
+---
+// src/components/AuthForm.astro
+interface Props {
+  showProviderButtons?: boolean;
+}
+
+const { showProviderButtons = false } = Astro.props;
+---
+
+{
+  showProviderButtons && (
+    <>
+      <form action="/api/auth/signin" method="post">
+        <button
+          class="gsi-material-button"
+          class="button"
+          name="provider"
+          value="google"
+          type="submit"
+        >
+          <div class="gsi-material-button-state" />
+          <div class="gsi-material-button-content-wrapper">
+            <div class="gsi-material-button-icon">
+              <svg
+                version="1.1"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 48 48"
+                xmlns:xlink="http://www.w3.org/1999/xlink"
+                style="display: block;"
+              >
+                <path
+                  fill="#EA4335"
+                  d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+                />
+                <path
+                  fill="#4285F4"
+                  d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+                />
+                <path fill="none" d="M0 0h48v48H0z" />
+              </svg>
+            </div>
+            <span class="gsi-material-button-contents">
+              Continue with Google
+            </span>
+            <span style="display: none;">Continue with Google</span>
+          </div>
+        </button>
+      </form>
+    </>
+  )
+}
+
+<script>
+  import "material/button/text-button";
+</script>
+
+<style>
+  .gsi-material-button {
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    -webkit-appearance: none;
+    background-color: WHITE;
+    background-image: none;
+    border: 1px solid #747775;
+    -webkit-border-radius: 20px;
+    border-radius: 20px;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    color: #1f1f1f;
+    cursor: pointer;
+    font-family: "Roboto", arial, sans-serif;
+    font-size: 14px;
+    height: 40px;
+    letter-spacing: 0.25px;
+    outline: none;
+    overflow: hidden;
+    padding: 0 12px;
+    position: relative;
+    text-align: center;
+    -webkit-transition:
+      background-color 0.218s,
+      border-color 0.218s,
+      box-shadow 0.218s;
+    transition:
+      background-color 0.218s,
+      border-color 0.218s,
+      box-shadow 0.218s;
+    vertical-align: middle;
+    white-space: nowrap;
+    width: auto;
+    max-width: 400px;
+    min-width: min-content;
+  }
+
+  .gsi-material-button .gsi-material-button-icon {
+    height: 20px;
+    margin-right: 12px;
+    min-width: 20px;
+    width: 20px;
+  }
+
+  .gsi-material-button .gsi-material-button-content-wrapper {
+    -webkit-align-items: center;
+    align-items: center;
+    display: flex;
+    -webkit-flex-direction: row;
+    flex-direction: row;
+    -webkit-flex-wrap: nowrap;
+    flex-wrap: nowrap;
+    height: 100%;
+    justify-content: space-between;
+    position: relative;
+    width: 100%;
+  }
+
+  .gsi-material-button .gsi-material-button-contents {
+    -webkit-flex-grow: 1;
+    flex-grow: 1;
+    font-family: "Roboto", arial, sans-serif;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: top;
+  }
+
+  .gsi-material-button .gsi-material-button-state {
+    -webkit-transition: opacity 0.218s;
+    transition: opacity 0.218s;
+    bottom: 0;
+    left: 0;
+    opacity: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+
+  .gsi-material-button:disabled {
+    cursor: default;
+    background-color: #ffffff61;
+    border-color: #1f1f1f1f;
+  }
+
+  .gsi-material-button:disabled .gsi-material-button-contents {
+    opacity: 38%;
+  }
+
+  .gsi-material-button:disabled .gsi-material-button-icon {
+    opacity: 38%;
+  }
+
+  .gsi-material-button:not(:disabled):active .gsi-material-button-state,
+  .gsi-material-button:not(:disabled):focus .gsi-material-button-state {
+    background-color: #303030;
+    opacity: 12%;
+  }
+
+  .gsi-material-button:not(:disabled):hover {
+    -webkit-box-shadow:
+      0 1px 2px 0 rgba(60, 64, 67, 0.3),
+      0 1px 3px 1px rgba(60, 64, 67, 0.15);
+    box-shadow:
+      0 1px 2px 0 rgba(60, 64, 67, 0.3),
+      0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  }
+
+  .gsi-material-button:not(:disabled):hover .gsi-material-button-state {
+    background-color: #303030;
+    opacity: 8%;
+  }
+</style>
+
 ```
 
 ---
@@ -411,290 +1808,86 @@ function formatDate(dateString: string | undefined) {
 
 ---
 
-`src\pages\api\auth\callback.ts`:
-```
-// src/pages/api/auth/callback.ts
-import type { APIRoute } from "astro";
-import { supabase } from "../../../lib/supabase";
-
-export const GET: APIRoute = async ({ url, cookies, redirect }) => {
-  const authCode = url.searchParams.get("code");
-
-  if (!authCode) {
-    return new Response("No code provided", { status: 400 });
-  }
-
-  const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
-
-  if (error) {
-    return new Response(error.message, { status: 500 });
-  }
-
-  const { access_token, refresh_token } = data.session;
-
-  cookies.set("sb-access-token", access_token, {
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-  cookies.set("sb-refresh-token", refresh_token, {
-    path: "/",
-    secure: true,
-    httpOnly: true,
-  });
-
-  // Create a new URL object for the /dashboard page
-  const redirectUrl = new URL('/dashboard', url.origin);
-
-  // Redirect to the cleaned URL
-  return redirect(redirectUrl.toString());
-};
-```
-
----
-
-`src\pages\signin.astro`:
+`src\components\ThemeIcon.astro`:
 ```
 ---
-// src/pages/signin.astro
-import Base from "../layout/Base.astro";
-import AuthForm from "../components/AuthForm.astro";
-const title = "Sign in";
-
----
-
-<Base title={title}>
-  <main>
-    <section>
-      <h1>{title}</h1>
-      <AuthForm showProviderButtons />
-    </section>
-  </main>
-</Base>
-```
-
----
-
-`src\lib\apiHelpers.ts`:
-```
-// src/lib/apiHelpers.ts
-import type { PostgrestError } from "@supabase/supabase-js";
-import { AuthError } from "@supabase/supabase-js";
-
-export function handleSupabaseError(error: PostgrestError, message: string) {
-  console.error(message, error);
-  return new Response(
-    JSON.stringify({
-      error: message,
-      details: error.message,
-    }),
-    { status: 500, headers: { "Content-Type": "application/json" } },
-  );
-}
-
-export function handleCountError(error: any, message: string) {
-    console.error(message, error);
-    return new Response(
-        JSON.stringify({
-            error: message,
-            details: error.message || "Unknown error",
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
-}
-
-export function handleRequestError(error: any, message: string) {
-    console.error(message, error);
-    return new Response(
-        JSON.stringify({
-          error: message,
-          details: error.message || 'Invalid Request',
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-export function handleAuthError(error: AuthError, message: string) {
-  console.error(message, error);
-  return new Response(
-    JSON.stringify({
-      error: message,
-      details: error.message,
-    }),
-    { status: 500, headers: { "Content-Type": "application/json" } },
-  );
-}
-```
-
----
-
-`src\lib\supabase.ts`:
-```
-// src/lib/supabase.ts
-import { createClient } from "@supabase/supabase-js";
-
-export const supabase = createClient(
-  import.meta.env.SUPABASE_URL,
-  import.meta.env.SUPABASE_ANON_KEY,
-  {
-    auth: {
-      flowType: "pkce",
-      autoRefreshToken: true,
-      persistSession: true,
-    },
-  },
-);
-```
-
----
-
-`src\pages\dashboard.astro`:
-```
----
-// src/pages/dashboard.astro
-import Form from "../components/Form.astro"
-import Base from "../layout/Base.astro";
-import Profile from "../components/Profile.astro";
-const { name, school, phone } = Astro.locals;
----
-
-<Base title="Dashboard">
-<Profile />
-  <md-text-button class="logout">KELUAR</md-text-button>
-<Form userName={name} userSchool={school} userPhone={phone}></Form>
-</Base>
-
-<script>
-import "material/dialog/dialog";
-import "material/button/text-button";
-</script>
-
-<style>
-md-text-button{
-    font-family: 'Open Sans Variable', sans-serif;
-    --md-text-button-label-text-color: var(--md-sys-color-error);
-}
-</style>
-```
-
----
-
-`src\components\Header.astro`:
-```
----
-import "@fontsource-variable/eb-garamond";
+// src/components/ThemeIcon.astro
 import { Icon } from "astro-icon/components";
-import { Image } from "astro:assets";
-import ThemeIcon from "./ThemeIcon.astro"; // Import the new component
-
-interface Props {
-    isLoggedIn: boolean;
-}
-
-const { isLoggedIn } = Astro.props;
-const { avatar_url, name } = Astro.locals;
 ---
 
-<header>
-    <a href="/">
-        <div class="main">
-            <Icon name="Logo" size="1.5em" />
-            <h1>FaraidAcademy</h1>
-        </div>
-        </a>
-    <div class="nav row">
-        <ThemeIcon />
-        {
-            isLoggedIn ? (
-                avatar_url ? (
-                    <a href="/dashboard">
-                        <Image
-                            class="avatar"
-                            src={avatar_url}
-                            alt={name ? `${name}'s avatar` : "User Avatar"}
-                            width={32}
-                            height={32}
-                            loading="lazy"
-                            format="webp"
-                        />
-                    </a>
-                ) : (
-                    <a href="/dashboard">Dashboard</a>
-                )
-            ) : (
-                <form action="/api/auth/signin" method="post">
-                    <md-text-button
-                        class="button"
-                        name="provider"
-                        value="google"
-                        type="submit"
-                    >
-                        LOGIN
-                    </md-text-button>
-                </form>
-            )
-        }
-    </div>
-</header>
-
-<script>
-    import "material/button/text-button";
-</script>
+<button id="themeToggle" aria-label="Toggle Theme">
+  <Icon name="material-symbols:light-mode-rounded" data-icon="light-icon" />
+  <Icon name="material-symbols:dark-mode-rounded" data-icon="dark-icon" />
+</button>
 
 <style>
-    header {
-        font-family: "EB Garamond Variable", serif;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 0.3em;
-        position: fixed;
-        top: 0;
-        padding: 1em;
-        justify-content: space-between;
-        width: 100%;
-        background-color: transparent;
-        z-index: 100;
-    }
+  #themeToggle {
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    color: var(--md-sys-color-on-surface);
+    font-size: 1.5rem;
+  }
 
-    [data-icon="Logo"] {
-    }
+  /* Light theme: show light, hide dark */
+  :global(.light) [data-icon="dark-icon"] {
+    display: flex;
+  }
+  :global(.light) [data-icon="light-icon"] {
+    display: none;
+  }
 
-    .main {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 0.5em;
-        font-size: 1em;
-    }
-
-    h1 {
-        font-weight: 500;
-        font-size: 1em;
-    }
-
-    header a {
-        display: flex;
-        text-decoration: none;
-        color: inherit;
-        height: min-content;
-    }
-    .nav {
-        width: min-content;
-        height: min-content;
-        gap: 1em;
-    }
-    .avatar {
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid var(--md-sys-color-outline-variant);
-    }
-
-    .button {
-        font-family: "Open Sans", sans-serif;
-    }
+  /* Dark theme: hide light, show dark */
+  :global(.dark) [data-icon="dark-icon"] {
+    display: none;
+  }
+  :global(.dark) [data-icon="light-icon"] {
+    display: flex;
+  }
 </style>
 
+<script is:inline>
+  document.addEventListener('astro:page-load', () => {
+  const theme = (() => {
+    const localStorageTheme = localStorage.getItem("theme");
+    if (localStorageTheme === "dark" || localStorageTheme === "light") {
+      return localStorageTheme;
+    }
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  })();
+
+  function applyTheme(currentTheme) {
+    const root = document.documentElement;
+    if (currentTheme === "dark") {
+      root.classList.add("dark");
+      root.classList.remove("light");
+    } else {
+      root.classList.add("light");
+      root.classList.remove("dark");
+    }
+    localStorage.setItem("theme", currentTheme);
+  }
+
+  applyTheme(theme);
+
+  const handleToggleClick = () => {
+    const element = document.documentElement;
+    let isDark;
+    if (element.classList.contains("dark")) {
+      isDark = false;
+    } else {
+       isDark = true;
+    }
+
+    applyTheme(isDark ? "dark" : "light");
+  };
+
+  document.getElementById("themeToggle")?.addEventListener("click", handleToggleClick);});
+</script>
 ```
 
 ---
