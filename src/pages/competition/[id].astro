@@ -1,10 +1,10 @@
 ---
+import Countdown from "../../components/Countdown.astro";
 import Base from "../../layout/Base.astro";
 import { supabase } from "../../lib/supabase";
 import type { Question, Answer } from "../../types";
 import { Icon } from "astro-icon/components";
-import "../../styles/light.css";  // Import light theme
-import "../../styles/dark.css";   // Import dark theme
+
 const { id } = Astro.params;
 
 if (!id || isNaN(Number(id))) {
@@ -93,9 +93,17 @@ const formattedMoney = formatNumber(question.money);
 ---
 
 <Base title={`Question ${questionId}`}>
-  <md-elevated-card class="competition-card col">
-    <section class="col" dir="rtl" data-question-id={questionId}>
-      <md-filled-card class="question col" >
+  <md-filled-card class="countdown">
+    <Countdown targetTime="March 19, 2025 13:15:00 GMT+0300" format="colon" />
+  </md-filled-card>
+  <style>
+    .countdown {
+      padding: 12px;
+    }
+  </style>
+  <md-elevated-card dir="rtl" class="competition-card col">
+    <div class="question-area col" data-question-id={questionId}>
+      <md-filled-card class="question col">
         <p>{question.question}</p>
         {formattedMoney && <p>التركة: Rp {formattedMoney}</p>}
         <p>السؤال: كم نصيب {question.case}؟</p>
@@ -136,47 +144,42 @@ const formattedMoney = formatNumber(question.money);
           </div>
         </div>
       </div>
+    </div>
+    <div class="navigation">
+      {
+        questionId > 1 && (
+          <md-filled-tonal-icon-button href={`/competition/${questionId - 1}`}>
+            <Icon name="material-symbols:arrow-forward-rounded" size="2em" />
+          </md-filled-tonal-icon-button>
+        )
+      }
 
-      <div class="navigation">
-        {
-          questionId > 1 && (
-            <md-filled-tonal-icon-button
-              href={`/competition/${questionId - 1}`}
-            >
-              <Icon name="material-symbols:arrow-forward-rounded" size="2em" />
-            </md-filled-tonal-icon-button>
-          )
-        }
-
-        <p>
-          <span id="status-indicator">
-            {
-              userHasAnswered ? (
-                <>
-                  <Icon name="material-symbols:check-circle-rounded" />
-                  &nbsp;Tersimpan
-                </>
-              ) : (
-                <>
-                  <Icon name="material-symbols:warning-rounded" />
-                  &nbsp;Belum Tersimpan
-                </>
-              )
-            }
-          </span>
-        </p>
-        {
-          questionId < totalQuestionCount && (
-            <md-filled-tonal-icon-button
-              href={`/competition/${questionId + 1}`}
-            >
-              <Icon name="material-symbols:arrow-back-rounded" size="2em" />
-            </md-filled-tonal-icon-button>
-          )
-        }
-      </div>
-    </section></md-elevated-card
-  >
+      <p>
+        <span id="status-indicator">
+          {
+            userHasAnswered ? (
+              <>
+                <Icon name="material-symbols:check-circle-rounded" />
+                 Tersimpan
+              </>
+            ) : (
+              <>
+                <Icon name="material-symbols:warning-rounded" />
+                 Belum Tersimpan
+              </>
+            )
+          }
+        </span>
+      </p>
+      {
+        questionId < totalQuestionCount && (
+          <md-filled-tonal-icon-button href={`/competition/${questionId + 1}`}>
+            <Icon name="material-symbols:arrow-back-rounded" size="2em" />
+          </md-filled-tonal-icon-button>
+        )
+      }
+    </div>
+  </md-elevated-card>
 </Base>
 
 <script>
@@ -185,80 +188,83 @@ const formattedMoney = formatNumber(question.money);
   import "material/card/elevated-card";
   import "material/card/filled-card";
 
-  document.addEventListener('astro:page-load', () => {
-  const statusIndicator = document.getElementById("status-indicator")!;
+  document.addEventListener("astro:page-load", () => {
+    const statusIndicator = document.getElementById("status-indicator")!;
 
-  const sectionElement = document.querySelector("section");
-  const questionId = sectionElement
-    ? parseInt(sectionElement.dataset.questionId || "", 10)
-    : null;
+    const questionAreaElement = document.querySelector<HTMLElement>("div.question-area");
+    const questionId = questionAreaElement
+      ? parseInt(questionAreaElement.dataset.questionId || "", 10)
+      : null;
 
-  async function submitAnswer(
-    questionId: number | null,
-    answerId: number | null | string,
-  ) {
-    if (questionId === null) {
-      console.error("Question ID not found!");
-      statusIndicator.textContent = "error";
-      return;
-    }
 
-    const parsedAnswerId =
-      answerId === "null"
-        ? null
-        : typeof answerId === "string"
-          ? parseInt(answerId, 10)
-          : answerId;
 
-    if (parsedAnswerId === null && answerId !== "null") {
-      console.error("Invalid answer ID:", answerId);
-      statusIndicator.textContent = "error";
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/answers", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          questionId: questionId,
-          answerId: parsedAnswerId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = errorData.error || "Failed to save answer";
-        throw new Error(errorMessage);
+    async function submitAnswer(
+      questionId: number | null,
+      answerId: number | null | string,
+    ) {
+      if (questionId === null) {
+        console.error("Question ID not found!");
+        statusIndicator.textContent = "error";
+        return;
       }
 
-      statusIndicator.textContent = "✅ Tersimpan";
-      return true;
-    } catch (error) {
-      console.error("Error saving answer:", error);
-      statusIndicator.textContent = "error";
+      const parsedAnswerId =
+        answerId === "null"
+          ? null
+          : typeof answerId === "string"
+            ? parseInt(answerId, 10)
+            : answerId;
 
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert("An unexpected error occurred.");
+      if (parsedAnswerId === null && answerId !== "null") {
+        console.error("Invalid answer ID:", answerId);
+        statusIndicator.textContent = "error";
+        return;
       }
-      return false;
+
+      try {
+        const response = await fetch("/api/answers", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            questionId: questionId,
+            answerId: parsedAnswerId,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          const errorMessage = errorData.error || "Failed to save answer";
+          throw new Error(errorMessage);
+        }
+
+        statusIndicator.textContent = "✅ Tersimpan";
+        return true;
+      } catch (error) {
+        console.error("Error saving answer:", error);
+        statusIndicator.textContent = "error";
+
+        if (error instanceof Error) {
+          alert(error.message);
+        } else {
+          alert("An unexpected error occurred.");
+        }
+        return false;
+      }
     }
-  }
 
-  const radioGroup = document.querySelector('[role="radiogroup"]');
+    const radioGroup = document.querySelector('[role="radiogroup"]');
 
-  radioGroup?.addEventListener("change", async (event) => {
-    const target = event.target as HTMLInputElement;
+    radioGroup?.addEventListener("change", async (event) => {
+      const target = event.target as HTMLInputElement;
 
-    if (target.tagName === "MD-RADIO") {
-      statusIndicator.textContent = "⚠ Belum Tersimpan";
-      await submitAnswer(questionId, target.value);
-    }
-  });});
+      if (target.tagName === "MD-RADIO") {
+        statusIndicator.textContent = "⚠ Belum Tersimpan"; 
+        await submitAnswer(questionId, target.value);
+      }
+    });
+  });
 </script>
 
 <style is:global>
@@ -296,7 +302,7 @@ const formattedMoney = formatNumber(question.money);
     padding: 1em;
   }
 
-  .navigation[data-astro-cid-t6c3q7ka] {
+  .navigation {
     display: flex;
     justify-content: space-between;
     width: 100%;
@@ -347,6 +353,17 @@ const formattedMoney = formatNumber(question.money);
   @media (min-width: 840px) {
     .competition-card {
       font-size: 0.8em;
+      width: auto;
+      gap: 1em;
+    }
+
+    .question, .answers{
+      width: auto;
+    }
+
+    .question-area {
+      flex-direction: row;
+      gap: 1em;
     }
   }
 </style>

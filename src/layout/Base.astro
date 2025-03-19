@@ -1,9 +1,9 @@
 ---
 import Header from "../components/Header.astro";
 import "../styles/global.css";
-import { checkAndSetSession } from '../lib/auth'; // Import here
-import "../styles/light.css";  // Import light theme
-import "../styles/dark.css";   // Import dark theme
+import { checkAndSetSession } from '../lib/auth';
+import "../styles/light.css";
+import "../styles/dark.css";
 import { ClientRouter } from 'astro:transitions';
 
 interface Props {
@@ -12,10 +12,11 @@ interface Props {
 
 const { title } = Astro.props;
 
-// Perform the login check HERE, in the layout
 const isLoggedIn = await checkAndSetSession(Astro.cookies, Astro.locals);
 
 import '@fontsource-variable/open-sans';
+import '@fontsource/amiri';
+import '@fontsource-variable/eb-garamond';
 import Footer from "../components/Footer.astro";
 
 ---

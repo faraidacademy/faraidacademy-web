@@ -1,19 +1,25 @@
 ---
-const targetDate: Date = new Date('April 25, 2025 00:00:00 GMT+0000');
-const targetTimestamp: number = targetDate.getTime();
-
-interface Props{
-  preffix?: string;
-  suffix?: string
+interface Props {
+  targetTime: string;
+  format?: "dhms" | "colon";
 }
 
-const {preffix, suffix} = Astro.props;
+const { targetTime, format = "dhms" } = Astro.props;
+
+const targetDate: Date = new Date(targetTime);
+const targetTimestamp: number = targetDate.getTime();
+
+if (isNaN(targetTimestamp)) {
+  console.error("Invalid targetTime prop:", targetTime);
+}
 
 ---
 
-<p class="countdown" data-target={targetTimestamp}>
-  {preffix}<span class="countdown-text"></span>{suffix}
-</p>
+{ !isNaN(targetTimestamp) && (
+  <p class="countdown" data-target={targetTimestamp} data-format={format}>
+    <span class="countdown-text"></span>
+  </p>
+)}
 
 <style>
   .countdown {
@@ -22,11 +28,21 @@ const {preffix, suffix} = Astro.props;
 </style>
 
 <script>
-  const countdownElement = document.querySelector('.countdown') as HTMLParagraphElement;
-  const targetTimestamp = parseInt(countdownElement.dataset.target || '0', 10);
-  const countdownTextSpan = countdownElement.querySelector('.countdown-text') as HTMLSpanElement;
+  function updateCountdown(countdownElement: HTMLParagraphElement) {
+      if (!countdownElement) {
+        return;
+      }
 
-  function updateCountdown() {
+    const targetTimestamp = parseInt(countdownElement.dataset.target || '0', 10);
+    const countdownTextSpan = countdownElement.querySelector('.countdown-text') as HTMLSpanElement;
+    const format = countdownElement.dataset.format || "dhms";
+
+    if (isNaN(targetTimestamp)) {
+          console.error("Invalid targetTimestamp:", countdownElement.dataset.target);
+          countdownTextSpan.textContent = 'Invalid date';
+          return;
+    }
+
     const now: number = new Date().getTime();
     const timeLeft: number = targetTimestamp - now;
 
@@ -40,13 +56,40 @@ const {preffix, suffix} = Astro.props;
     const minutes: number = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
     const seconds: number = Math.floor((timeLeft % (1000 * 60)) / 1000);
 
-    const countdownString: string = `${days}h ${hours}j ${minutes}m ${seconds}d`;
+    let countdownString: string = "";
+
+    if (format === "colon") {
+      if (days > 0) {
+        countdownString += `${days}:`;
+      }
+      if (days > 0 || hours > 0) {
+        countdownString += `${String(hours).padStart(2, '0')}:`;
+      }
+      countdownString += `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    } else { // dhms format
+       if (days > 0) {
+          countdownString += `${days}d `;
+        }
+        if (days > 0 || hours > 0) {
+          countdownString += `${hours}h `;
+        }
+        if (days > 0 || hours > 0 || minutes > 0) {
+          countdownString += `${minutes}m `;
+        }
+        countdownString += `${seconds}s`;
+    }
+
+
 
     countdownTextSpan.textContent = countdownString;
-
-    setTimeout(updateCountdown, 1000);
+    setTimeout(() => updateCountdown(countdownElement), 1000);
   }
 
-  updateCountdown();
 
+  document.addEventListener('astro:page-load', () => {
+      const countdownElements = document.querySelectorAll('.countdown');
+      countdownElements.forEach(countdownElement => {
+        updateCountdown(countdownElement as HTMLParagraphElement);
+      });
+  });
 </script>

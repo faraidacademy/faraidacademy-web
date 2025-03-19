@@ -2,10 +2,12 @@
 // src/components/Form.astro
 import { Icon } from "astro-icon/components";
 
+//Form.astro
 interface Props {
     userName?: string;
     userSchool?: string;
     userPhone?: string;
+    userGender?: string;
     userIsParticipant?: boolean;
     userIsVisible?: boolean;
 }
@@ -14,6 +16,7 @@ const {
     userName = "",
     userSchool = "",
     userPhone = "",
+    userGender = "",
     userIsParticipant = false,
     userIsVisible = false,
 } = Astro.props;
@@ -43,8 +46,20 @@ const {
             minlength="4"
             type="tel"
             value={userPhone}
-            name="phone"><Icon name="material-symbols:phone-in-talk-rounded" slot="leading-icon" /></md-outlined-text-field>
+            name="phone"><Icon name="material-symbols:phone-in-talk-rounded" slot="leading-icon" />
+        </md-outlined-text-field>
 
+            <div class="gender row">
+                <div class="row">
+                    <md-radio id="male-radio" name="gender" value="male" checked={userGender === 'male'}></md-radio>
+                    <label for="male-radio">Male</label>
+                </div>
+                <div class="row">
+                    <md-radio id="female-radio" name="gender" value="female" checked={userGender === 'female'}></md-radio>
+                    <label for="female-radio">Female</label>
+                </div>
+            </div>
+<md-divider></md-divider>
         <label class="competition-checkbox">
             <md-checkbox
                 name="is_participant"
@@ -55,6 +70,7 @@ const {
             ></md-checkbox>
             <span>Partisipasi dalam <strong>Kompetisi Faraid 2025</strong>
         </label>
+        
 
         <label>
             <md-checkbox
@@ -72,6 +88,7 @@ const {
             >SIMPAN</md-filled-button
         >
     </div>
+
 </md-dialog>
 
 <script>
@@ -79,6 +96,8 @@ const {
     import "material/button/filled-button";
     import "material/dialog/dialog";
     import "material/checkbox/checkbox";
+    import "material/radio/radio";
+    import "material/divider/divider"
 
     const submitButton = document.getElementById("submit-button");
     const form = document.getElementById("form-id") as HTMLFormElement;
@@ -101,6 +120,10 @@ const {
             (form.querySelector('[name="is_visible"]') as HTMLInputElement)
                 ?.checked || false;
 
+                const genderElement = form.querySelector('[name="gender"]:checked') as HTMLInputElement;
+    const gender = genderElement ? genderElement.value : '';  // Get selected value, default to "" if none
+    console.log("Gender:", gender)
+
         if (!form.checkValidity()) {
             form.reportValidity();
             return;
@@ -113,12 +136,13 @@ const {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    name,
-                    school,
-                    phone,
-                    is_participant: isParticipant,
-                    is_visible: isVisible,
-                }),
+    name,
+    school,
+    phone,
+    gender,
+    is_participant: isParticipant,
+    is_visible: isVisible,
+}),
             });
 
             if (!response.ok) {
@@ -144,7 +168,7 @@ const {
 
 <style>
     .dialog {
-        display: flex;
+        display: none;
         flex-direction: column;
         margin: auto;
         height: min-content;
@@ -178,4 +202,8 @@ const {
         color: var(--md-sys-color-on-primary-container);
         border-radius: 8px;
     }
+
+    .gender{
+                justify-content: space-between;
+            }
 </style>

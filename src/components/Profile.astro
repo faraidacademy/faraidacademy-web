@@ -57,6 +57,7 @@ function formatDate(dateString: string | undefined) {
         </p>
       )
     }
+    
     <p class="data row">
       <Icon name="material-symbols:person-rounded" />
       {formatDate(createdAt)}
@@ -75,6 +76,7 @@ function formatDate(dateString: string | undefined) {
 
   if (editProfileButton && dialog) {
     editProfileButton.addEventListener("click", () => {
+      dialog.style.display = "flex";
       dialog.open = true;
     });
   }
