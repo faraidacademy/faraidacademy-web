@@ -2,7 +2,9 @@
 import "@fontsource-variable/eb-garamond";
 import { Icon } from "astro-icon/components";
 import { Image } from "astro:assets";
-import ThemeIcon from "./ThemeIcon.astro"; // Import the new component
+import ThemeIcon from "./ThemeIcon.astro";
+import Navbar from "./Navbar.astro";
+import NavStrip from "./NavStrip.astro";
 
 interface Props {
     isLoggedIn: boolean;
@@ -18,9 +20,11 @@ const { avatar_url, name } = Astro.locals;
             <Icon name="Logo" size="1.5em" />
             <h1>FaraidAcademy</h1>
         </div>
-        </a>
+    </a>
     <div class="nav row">
+        <NavStrip />
         <ThemeIcon />
+		
         {
             isLoggedIn ? (
                 avatar_url ? (
@@ -50,6 +54,7 @@ const { avatar_url, name } = Astro.locals;
                 </form>
             )
         }
+        <Navbar />
     </div>
 </header>
 
@@ -73,8 +78,6 @@ const { avatar_url, name } = Astro.locals;
         z-index: 100;
     }
 
-    [data-icon="Logo"] {
-    }
 
     .main {
         display: flex;
@@ -99,6 +102,8 @@ const { avatar_url, name } = Astro.locals;
         width: min-content;
         height: min-content;
         gap: 1em;
+		display: flex;
+        font-size: 0.8em;
     }
     .avatar {
         border-radius: 50%;

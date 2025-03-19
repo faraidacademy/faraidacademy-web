@@ -1,3 +1,4 @@
+// env.d.ts
 declare namespace App {
   interface Locals {
     email: string;
@@ -7,5 +8,7 @@ declare namespace App {
     createdAt: string;
     school: string | undefined;
     phone: string | undefined;
+    is_participant: boolean | undefined;
+    is_visible: boolean | undefined;
   }
 }

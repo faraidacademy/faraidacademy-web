@@ -1,27 +1,76 @@
 ---
 // src/components/Form.astro
+import { Icon } from "astro-icon/components";
+
 interface Props {
-  userName?: string;
-  userSchool?: string;
-  userPhone?: string;
+    userName?: string;
+    userSchool?: string;
+    userPhone?: string;
+    userIsParticipant?: boolean;
+    userIsVisible?: boolean;
 }
 
-const { userName = "", userSchool = "", userPhone = "" } = Astro.props;
+const {
+    userName = "",
+    userSchool = "",
+    userPhone = "",
+    userIsParticipant = false,
+    userIsVisible = false,
+} = Astro.props;
 ---
 
 <md-dialog class="dialog" id="edit-profile">
-
-    <div slot="headline">Edit Profil</div>
+    <div slot="headline">
+        <Icon name="material-symbols:edit-square-rounded" /> Edit Profil
+    </div>
 
     <form slot="content" id="form-id" method="dialog">
-        <md-outlined-text-field label="Nama Lengkap" required minlength="4" value={userName} name="name"></md-outlined-text-field>
-        <md-outlined-text-field label="Universitas/Sekolah" required minlength="4" value={userSchool} name="school"></md-outlined-text-field>
-        <md-outlined-text-field label="Nomor Telefon" required minlength="4" type="tel" value={userPhone} name="phone"></md-outlined-text-field>
-        
+        <md-outlined-text-field
+            label="Nama Lengkap"
+            required
+            minlength="4"
+            value={userName}
+            name="name"><Icon name="material-symbols:person-rounded" slot="leading-icon" /></md-outlined-text-field>
+        <md-outlined-text-field
+            label="Universitas/Sekolah"
+            required
+            minlength="4"
+            value={userSchool}
+            name="school"><Icon name="material-symbols:school-rounded" slot="leading-icon" /></md-outlined-text-field>
+        <md-outlined-text-field
+            label="Nomor Telefon"
+            required
+            minlength="4"
+            type="tel"
+            value={userPhone}
+            name="phone"><Icon name="material-symbols:phone-in-talk-rounded" slot="leading-icon" /></md-outlined-text-field>
+
+        <label class="competition-checkbox">
+            <md-checkbox
+                name="is_participant"
+                touch-target="wrapper"
+                checked={userIsParticipant}
+                value="true"
+                disabled={userIsParticipant}
+            ></md-checkbox>
+            <span>Partisipasi dalam <strong>Kompetisi Faraid 2025</strong>
+        </label>
+
+        <label>
+            <md-checkbox
+                name="is_visible"
+                touch-target="wrapper"
+                checked={userIsVisible}
+                value="true"
+            >
+            </md-checkbox><span>Tampilkan nama Anda di daftar peserta</span>
+        </label>
     </form>
 
     <div slot="actions">
-        <md-filled-button form="form-id" id="submit-button">SIMPAN</md-filled-button>
+        <md-filled-button form="form-id" id="submit-button"
+            >SIMPAN</md-filled-button
+        >
     </div>
 </md-dialog>
 
@@ -29,14 +78,33 @@ const { userName = "", userSchool = "", userPhone = "" } = Astro.props;
     import "material/textfield/outlined-text-field";
     import "material/button/filled-button";
     import "material/dialog/dialog";
+    import "material/checkbox/checkbox";
 
     const submitButton = document.getElementById("submit-button");
+    const form = document.getElementById("form-id") as HTMLFormElement;
+    const dialog = document.querySelector("#edit-profile") as any;
 
-    const submitProfileForm = async () => {
-        const form = document.getElementById("form-id") as HTMLFormElement;
-        const name = (form.querySelector('[name="name"]') as HTMLInputElement).value;
-        const school = (form.querySelector('[name="school"]') as HTMLInputElement).value;
-        const phone = (form.querySelector('[name="phone"]') as HTMLInputElement).value;
+    const submitProfileForm = async (event: Event) => {
+        event.preventDefault();
+
+        const name = (form.querySelector('[name="name"]') as HTMLInputElement)
+            .value;
+        const school = (
+            form.querySelector('[name="school"]') as HTMLInputElement
+        ).value;
+        const phone = (form.querySelector('[name="phone"]') as HTMLInputElement)
+            .value;
+        const isParticipant =
+            (form.querySelector('[name="is_participant"]') as HTMLInputElement)
+                ?.checked || false;
+        const isVisible =
+            (form.querySelector('[name="is_visible"]') as HTMLInputElement)
+                ?.checked || false;
+
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
 
         try {
             const response = await fetch("/api/profile", {
@@ -44,19 +112,25 @@ const { userName = "", userSchool = "", userPhone = "" } = Astro.props;
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ name, school, phone }),
+                body: JSON.stringify({
+                    name,
+                    school,
+                    phone,
+                    is_participant: isParticipant,
+                    is_visible: isVisible,
+                }),
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                alert(`Error updating profile: ${errorData.error} - ${errorData.details}`);
+                alert(
+                    `Error updating profile: ${errorData.error} - ${errorData.details}`,
+                );
                 return;
             }
 
-            const dialog = document.querySelector("#edit-profile") as any;
-            dialog.close = true;
+            dialog.close();
             window.location.reload();
-
         } catch (error) {
             console.error("Error updating profile:", error);
             alert("An unexpected error occurred.");
@@ -64,7 +138,7 @@ const { userName = "", userSchool = "", userPhone = "" } = Astro.props;
     };
 
     if (submitButton) {
-        submitButton.addEventListener('click', submitProfileForm);
+        submitButton.addEventListener("click", submitProfileForm);
     }
 </script>
 
@@ -73,14 +147,35 @@ const { userName = "", userSchool = "", userPhone = "" } = Astro.props;
         display: flex;
         flex-direction: column;
         margin: auto;
-        height:min-content;
+        height: min-content;
         position: absolute;
-
     }
 
     #form-id {
         display: flex;
         flex-direction: column;
-        gap:1em;
+        gap: 1em;
+    }
+
+    label{
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+    }
+
+    label span strong {
+        display: inline;
+        text-wrap: pretty;
+    }
+
+    label{
+        padding: 5px;
+    }
+
+    .competition-checkbox{
+        padding: 5px;
+        background-color: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+        border-radius: 8px;
     }
 </style>

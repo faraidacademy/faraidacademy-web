@@ -5,87 +5,98 @@ import Base from "../layout/Base.astro";
 import Ayat from "../images/ayat.svg";
 import { Icon } from "astro-icon/components";
 import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro";
-const { isLoggedIn } = Astro.props;
+import { checkAndSetSession } from "../lib/auth"; // Import checkAndSetSession
+
+// Get isLoggedIn directly within index.astro
+const isLoggedIn = await checkAndSetSession(Astro.cookies, Astro.locals);
 ---
 
 <Base title="Faraid Academy - Home">
-  <div class="main-text col">
-    <div class="main-verse col">
-      <div class="verse row">
-        <Icon class="flip" name="parenthesis" size="1.5em" />
-        <Ayat height="3em" ; fill="var(--md-sys-color-on-surface)" />
-        <Icon name="parenthesis" size="1.5em" />
+  <main class="col">
+    <div class="main-text col">
+      <div class="main-verse col">
+        <div class="verse row">
+          <Icon class="flip" name="parenthesis" size="1.5em" />
+          <Ayat height="3em" ; fill="var(--md-sys-color-on-surface)" />
+          <Icon name="parenthesis" size="1.5em" />
+        </div>
+        <div class="translation col">
+          <p>
+            These (inheritance rules) are settled portions <span
+              >ordained by Allah</span
+            >
+            <Icon name="tabarak" />
+          </p>
+        </div>
       </div>
-      <div class="translation col">
-        <p>
-          These (inheritance rules) are settled portions ordained by Allah <Icon
-            name="tabarak"
-          />
+      <div class="main-hadith col">
+        <div class="hadith" dir="rtl">
+          <p>«ألحقوا الفرائض بأهلها»</p>
+        </div>
+        <p class="translation">
+          Assign the prescribed shares [of inheritance] to the ones whom they
+          rightfully belong
         </p>
       </div>
     </div>
-    <div class="main-hadith col">
-      <div class="hadith" dir="rtl">
-        <p>&laquo;ألحقوا الفرائض بأهلها&raquo;</p>
-      </div>
-      <p class="translation">
-        Assign the prescribed shares [of inheritance] to the ones whom they
-        rightfully belong
-      </p>
-    </div>
-  </div>
-  <CompetitionAnnouncement isLoggedIn={isLoggedIn} />
+    <CompetitionAnnouncement isLoggedIn={isLoggedIn} />
+  </main>
+</Base>
+<style>
+  main {
+    gap: 1.5em;
+  }
+  p {
+    text-align: center;
+  }
 
-  <style>
-    p {
-      text-align: center;
-    }
-    .main-text {
-      gap: 2em;
-      font-family: "EB Garamond Variable", serif;
-      margin: 0 0 4em;
-    }
-    .main-verse {
-      gap: 1em;
-      font-size: 1.1em;
-    }
+  span {
+    display: inline-block;
+  }
+  .main-text {
+    gap: 2em;
+    font-family: "EB Garamond Variable", serif;
+  }
+  .main-verse {
+    gap: 0.5em;
+    font-size: 1.1em;
+  }
 
-    .verse {
-      gap: 1em;
-      justify-content: center;
-    }
+  .verse {
+    gap: 1em;
+    justify-content: center;
+  }
 
-    .translation {
-      text-wrap: pretty;
-      font-size: 0.9em;
-    }
+  .translation {
+    text-wrap: pretty;
+    font-size: 0.9em;
+  }
 
-    .flip {
-      transform: scaleX(-1);
+  .flip {
+    transform: scaleX(-1);
+  }
+
+  .main-hadith {
+    display: none;
+    font-size: 0.6em;
+  }
+
+  .hadith {
+    font-family: "Amiri", serif;
+    font-size: 1.3em;
+  }
+
+  [data-icon="tabarak"] {
+    vertical-align: middle;
+  }
+
+  @media (min-width: 900px) {
+    body {
+      font-size: 1.5em;
     }
 
     .main-hadith {
-      display: none;
-      font-size: 0.6em;
+      display: flex;
     }
-
-    .hadith {
-      font-family: "Amiri", serif;
-      font-size: 1.3em;
-    }
-
-    [data-icon="tabarak"] {
-      vertical-align: middle;
-    }
-
-    @media (min-width: 900px) {
-      body {
-        font-size: 1.5em;
-      }
-
-      .main-hadith{
-        display: flex;
-      }
-    }
-  </style>
-</Base>
+  }
+</style>

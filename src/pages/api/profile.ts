@@ -12,23 +12,21 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   try {
-    const { name, school, phone } = await request.json();
+    const requestData = await request.json();
 
-    if (typeof name !== 'string' || name.length < 4) {
-      return handleRequestError(new Error("Invalid name"), "Name must be at least 4 characters");
-    }
-    if (typeof school !== 'string' || school.length < 4) {
-      return handleRequestError(new Error("Invalid school"), "School must be at least 4 characters");
-    }
-    if (typeof phone !== 'string' || phone.length < 4) {
-      return handleRequestError(new Error("Invalid phone"), "Phone must be at least 4 characters");
-    }
+    const name = 'name' in requestData ? requestData.name : locals.name;
+    const school = 'school' in requestData ? requestData.school : locals.school;
+    const phone = 'phone' in requestData ? requestData.phone : locals.phone;
+    const is_participant = 'is_participant' in requestData ? requestData.is_participant : locals.is_participant;
+    const is_visible = 'is_visible' in requestData ? requestData.is_visible : locals.is_visible;
 
     const { error } = await supabase.auth.updateUser({
       data: {
         name: name,
         school: school,
         phone: phone,
+        is_participant: is_participant,
+        is_visible: is_visible,
       },
     });
 

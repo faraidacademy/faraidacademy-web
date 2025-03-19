@@ -9,22 +9,27 @@ interface Props {
 const { isLoggedIn } = Astro.props;
 ---
 
-<md-outlined-card class="card col">
+<md-outlined-card class="card col" id="competition-card">
+        <Icon id="close-button" class="close-button" name="material-symbols:close-rounded" size="1em" />
     <div class="main col">
-        <Icon name="trophy" size="3em" />
+        <Icon name="trophy2" size="3em" />
         Faraid Competition 2025
     </div>
-    <p>Pendaftaran ditutup dalam:</p>
-    <Countdown />
-    {isLoggedIn ? (
-        <md-filled-button href="/competition">JOIN</md-filled-button>
-    ) : (
-        <form action="/api/auth/signin" method="post">
-            <md-filled-button type="submit" name="provider" value="google">
-                JOIN
-            </md-filled-button>
-        </form>
-    )}
+    <div class="col">
+        <p>Pendaftaran ditutup dalam:</p>
+        <Countdown />
+    </div>
+    {
+        isLoggedIn ? (
+            <md-filled-button href="/competition">JOIN</md-filled-button>
+        ) : (
+            <form action="/api/auth/signin" method="post">
+                <md-filled-button type="submit" name="provider" value="google">
+                    JOIN
+                </md-filled-button>
+            </form>
+        )
+    }
 </md-outlined-card>
 
 <script>
@@ -32,6 +37,18 @@ const { isLoggedIn } = Astro.props;
     import "material/card/outlined-card";
     import "material/card/elevated-card";
     import "material/card/filled-card";
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const closeButton = document.getElementById("close-button");
+        const card = document.getElementById("competition-card");
+
+        closeButton?.addEventListener("click", () => {
+            if (card) {
+                card.style.display = card.style.display === "none" ? "" : "none";
+            }
+        });
+    });
+
 </script>
 
 <style>
@@ -56,8 +73,21 @@ const { isLoggedIn } = Astro.props;
         font-weight: 600;
     }
 
-    .card > p {
+    .card > .col p {
         font-size: 0.5em;
+        opacity: 0.5;
+    }
+
+    .close-button {
+        position: absolute;
+        top: 0.7em;
+        right: 0.7em;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        z-index: 10;
+        color: var(--md-sys-color-on-surface-variant);
         opacity: 0.5;
     }
 

@@ -1,0 +1,36 @@
+---
+import { links } from "../data/links";
+---
+
+<nav>
+    <div id="nav" class="row">
+            {
+                links.map((link) => ( 
+                        <a href={link.href}>{link.text}</a>
+                ))
+            }
+    </div>
+</nav>
+
+<style>
+    #nav{
+        display: none;
+        font-size: 0.8em;
+        gap: 1em;
+
+    }
+    #nav > a:first-child {
+    font-weight: bold;
+}
+    a{
+        font-style: none;
+        color: var(--md-sys-color-on-surface);
+        text-decoration: none;
+    }
+
+    @media (min-width: 600px) {
+    #nav {
+      display: flex;
+    }
+  }
+</style>

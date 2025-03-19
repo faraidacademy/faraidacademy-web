@@ -1,0 +1,86 @@
+---
+import { Icon } from "astro-icon/components";
+
+import { links } from "../data/links";
+---
+
+<nav>
+    <Icon
+        name="material-symbols:menu-rounded"
+        size="2em"
+        id="menu-toggle"
+        aria-expanded="false"
+        aria-controls="nav-links"
+        aria-label="Toggle navigation"
+    />
+    <div id="nav-links" class="hidden col">
+            {
+                links.map((link) => (
+                        <a class="col" href={link.href}>{link.text}</a>
+                ))
+            }
+        </ul>
+    </div>
+</nav>
+
+<script>
+    const menuToggle = document.getElementById("menu-toggle");
+    const navLinks = document.getElementById("nav-links");
+
+    if (menuToggle && navLinks) {
+        menuToggle.addEventListener("click", () => {
+            const isExpanded =
+                menuToggle.getAttribute("aria-expanded") === "true";
+            menuToggle.setAttribute("aria-expanded", String(!isExpanded));
+            navLinks.classList.toggle("hidden");
+        });
+    }
+</script>
+
+<style>
+    nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+   
+
+    #nav-links {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background-color: var(--md-sys-color-background-variant);
+        box-shadow: 0px 3px 3px rgba(0, 0, 0, 0.1);
+        z-index: 1;
+        transition: transform 0.3s ease-in-out;
+        transform-origin: top;
+        padding: 1em 0;
+
+        font-size: 1.5em;
+    }
+
+    #nav-links.hidden {
+        transform: scaleY(0);
+    }
+
+    #nav-links a {
+        align-items: center;
+        width: 100%;
+        text-decoration: none;
+        color: inherit;
+        padding: 0.5em 0;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    @media (min-width: 600px) {
+    nav {
+      display: none;
+    }
+  }
+</style>

@@ -43,7 +43,7 @@ export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Loc
     if(session.access_token !== cookies.get("sb-access-token")?.value || session.refresh_token !== cookies.get("sb-refresh-token")?.value){
         setAuthCookies(cookies, session.access_token, session.refresh_token);
     }
-    
+
 
     if (locals && session.user) {
         locals.email = session.user.email ?? "";
@@ -51,8 +51,10 @@ export async function checkAndSetSession(cookies: AstroCookies, locals?: App.Loc
         locals.avatar_url = session.user.user_metadata?.avatar_url ?? "";
         locals.userId = session.user.id;
         locals.createdAt = session.user.created_at;
-        locals.school = session.user.user_metadata?.school ?? ""; // NEW
+        locals.school = session.user.user_metadata?.school ?? "";
         locals.phone = session.user.user_metadata?.phone ?? "";
+        locals.is_participant = session.user.user_metadata?.is_participant ?? false;
+        locals.is_visible = session.user.user_metadata?.is_visible ?? false;
     }
 
     return true;
