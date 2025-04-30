@@ -5,10 +5,8 @@ import Base from "../layout/Base.astro";
 import Ayat from "../images/ayat.svg";
 import { Icon } from "astro-icon/components";
 import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro";
-import { checkAndSetSession } from "../lib/auth"; // Import checkAndSetSession
 
-// Get isLoggedIn directly within index.astro
-const isLoggedIn = await checkAndSetSession(Astro.cookies, Astro.locals);
+const isLoggedIn = !!Astro.locals.userId;
 ---
 
 <Base title="Faraid Academy - Home">

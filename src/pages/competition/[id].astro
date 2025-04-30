@@ -47,7 +47,14 @@ const question: Question = questionData;
 const answers: Answer[] = answersData || [];
 shuffleArray(answers);
 
-const totalQuestionCount = 47;
+const { count: totalQuestionCount, error: countError } = await supabase
+  .from("questions")
+  .select('*', { count: 'exact', head: true });
+
+if (countError || totalQuestionCount === null) {
+  console.error("Error fetching question count:", countError);
+  return Astro.redirect("/competition");
+}
 
 let userResult = undefined;
 let userHasAnswered = false;

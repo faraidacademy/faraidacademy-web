@@ -10,7 +10,7 @@ const protectedRoutes = [
     "/competition/**",
 ];
 const redirectRoutes = ["/signin(|/)", "/register(|/)"];
-const protectedAPIRoutes = ["/api/questions(|/)", "/api/answers(|/)", "/api/profile(|/)"];
+const protectedAPIRoutes = ["/api/answers(|/)", "/api/profile(|/)"];
 
 export const onRequest = defineMiddleware(
   async ({ locals, url, cookies, redirect }, next) => {
