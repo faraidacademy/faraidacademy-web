@@ -4,30 +4,24 @@ import { supabase } from "../../lib/supabase";
 import { handleRequestError, handleAuthError } from "../../lib/apiHelpers";
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (!locals.userId) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
   try {
     const requestData = await request.json();
+    const updateData: { [key: string]: any } = {};
+    if ('name' in requestData) updateData.name = requestData.name;
+    if ('school' in requestData) updateData.school = requestData.school;
+    if ('phone' in requestData) updateData.phone = requestData.phone;
+    if ('is_participant' in requestData) updateData.is_participant = requestData.is_participant;
+    if ('is_visible' in requestData) updateData.is_visible = requestData.is_visible;
 
-    const name = 'name' in requestData ? requestData.name : locals.name;
-    const school = 'school' in requestData ? requestData.school : locals.school;
-    const phone = 'phone' in requestData ? requestData.phone : locals.phone;
-    const is_participant = 'is_participant' in requestData ? requestData.is_participant : locals.is_participant;
-    const is_visible = 'is_visible' in requestData ? requestData.is_visible : locals.is_visible;
+    if (Object.keys(updateData).length === 0) {
+      return new Response(JSON.stringify({ message: "No data provided to update" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     const { error } = await supabase.auth.updateUser({
-      data: {
-        name: name,
-        school: school,
-        phone: phone,
-        is_participant: is_participant,
-        is_visible: is_visible,
-      },
+      data: updateData,
     });
 
     if (error) {
@@ -39,6 +33,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-     return handleRequestError(error, "Invalid request body");
+    return handleRequestError(error, "Invalid request body");
   }
 };

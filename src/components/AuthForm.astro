@@ -1,5 +1,7 @@
 ---
 // src/components/AuthForm.astro
+import LoginWithGoogleButton from './LoginWithGoogleButton.astro';
+
 interface Props {
   showProviderButtons?: boolean;
 }
@@ -9,17 +11,7 @@ const { showProviderButtons = false } = Astro.props;
 
 {
   showProviderButtons && (
-    <>
-      <form action="/api/auth/signin" method="post">
-        <md-text-button
-          class="button"
-          name="provider"
-          value="google"
-          type="submit">
-          Log in with Google
-        </md-text-button>
-      </form>
-    </>
+    <LoginWithGoogleButton buttonText="Log in with Google" />
   )
 }
 

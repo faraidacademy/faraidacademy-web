@@ -5,6 +5,7 @@ import { Image } from "astro:assets";
 import ThemeIcon from "./ThemeIcon.astro";
 import Navbar from "./Navbar.astro";
 import NavStrip from "./NavStrip.astro";
+import LoginWithGoogleButton from './LoginWithGoogleButton.astro';
 
 interface Props {
     isLoggedIn: boolean;
@@ -42,16 +43,7 @@ const { avatar_url, name } = Astro.locals;
                     <a href="/dashboard">Dashboard</a>
                 )
             ) : (
-                <form action="/api/auth/signin" method="post">
-                    <md-text-button
-                        class="button"
-                        name="provider"
-                        value="google"
-                        type="submit"
-                    >
-                        LOGIN
-                    </md-text-button>
-                </form>
+                <LoginWithGoogleButton buttonText="LOGIN" />
             )
         }
         <Navbar />

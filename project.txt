@@ -83,6 +83,8 @@ export interface Answer {
 ```
 ---
 // src/components/AuthForm.astro
+import LoginWithGoogleButton from './LoginWithGoogleButton.astro';
+
 interface Props {
   showProviderButtons?: boolean;
 }
@@ -92,17 +94,7 @@ const { showProviderButtons = false } = Astro.props;
 
 {
   showProviderButtons && (
-    <>
-      <form action="/api/auth/signin" method="post">
-        <md-text-button
-          class="button"
-          name="provider"
-          value="google"
-          type="submit">
-          Log in with Google
-        </md-text-button>
-      </form>
-    </>
+    <LoginWithGoogleButton buttonText="Log in with Google" />
   )
 }
 
@@ -123,6 +115,7 @@ const { showProviderButtons = false } = Astro.props;
 ---
 import { Icon } from "astro-icon/components";
 import Countdown from "./Countdown.astro";
+import LoginWithGoogleButton from './LoginWithGoogleButton.astro';
 
 interface Props {
     isLoggedIn: boolean;
@@ -145,11 +138,7 @@ const { isLoggedIn } = Astro.props;
         isLoggedIn ? (
             <md-filled-button href="/competition">JOIN</md-filled-button>
         ) : (
-            <form action="/api/auth/signin" method="post">
-                <md-filled-button type="submit" name="provider" value="google">
-                    JOIN
-                </md-filled-button>
-            </form>
+            <LoginWithGoogleButton buttonType="filled" buttonText="JOIN" />
         )
     }
 </md-outlined-card>
@@ -562,7 +551,6 @@ const {
 
 <style>
     .dialog {
-        display: none;
         flex-direction: column;
         margin: auto;
         height: min-content;
@@ -613,6 +601,7 @@ import { Image } from "astro:assets";
 import ThemeIcon from "./ThemeIcon.astro";
 import Navbar from "./Navbar.astro";
 import NavStrip from "./NavStrip.astro";
+import LoginWithGoogleButton from './LoginWithGoogleButton.astro';
 
 interface Props {
     isLoggedIn: boolean;
@@ -650,16 +639,7 @@ const { avatar_url, name } = Astro.locals;
                     <a href="/dashboard">Dashboard</a>
                 )
             ) : (
-                <form action="/api/auth/signin" method="post">
-                    <md-text-button
-                        class="button"
-                        name="provider"
-                        value="google"
-                        type="submit"
-                    >
-                        LOGIN
-                    </md-text-button>
-                </form>
+                <LoginWithGoogleButton buttonText="LOGIN" />
             )
         }
         <Navbar />
@@ -723,6 +703,52 @@ const { avatar_url, name } = Astro.locals;
         font-family: "Open Sans", sans-serif;
     }
 </style>
+```
+---
+
+`src/components/LoginWithGoogleButton.astro`:
+```
+---
+interface Props {
+  buttonType?: 'text' | 'filled' | 'outlined'; // Material types
+  buttonText: string;
+  class?: string; // Allow passing additional classes
+}
+const { buttonType = 'text', buttonText, class: className } = Astro.props;
+---
+<form action="/api/auth/signin" method="post" class:list={[className]}>
+  {buttonType === 'text' && (
+    <md-text-button class="button" name="provider" value="google" type="submit">
+      {buttonText}
+    </md-text-button>
+  )}
+  {buttonType === 'filled' && (
+    <md-filled-button class="button" name="provider" value="google" type="submit">
+      {buttonText}
+    </md-filled-button>
+  )}
+  {buttonType === 'outlined' && (
+    <md-outlined-button class="button" name="provider" value="google" type="submit">
+      {buttonText}
+    </md-outlined-button>
+  )}
+</form>
+
+<script>
+  import "material/button/text-button";
+  import "material/button/filled-button";
+  import "material/button/outlined-button";
+</script>
+
+<style>
+.button {
+  font-family: "Open Sans Variable", sans-serif;
+}
+form {
+  display: inline-block;
+}
+</style>
+
 ```
 ---
 
@@ -939,8 +965,11 @@ function formatDate(dateString: string | undefined) {
 
   if (editProfileButton && dialog) {
     editProfileButton.addEventListener("click", () => {
-      dialog.style.display = "flex";
-      dialog.open = true;
+      if (typeof dialog.show === 'function') {
+        dialog.show();
+      } else {
+        dialog.open = true;
+      }
     });
   }
 </script>
@@ -1490,54 +1519,47 @@ const title = "Log in";
 
 `src/pages/api/answers.ts`:
 ```
- // src/pages/api/answers.ts
- import type { APIRoute } from "astro";
- import { supabase } from "../../lib/supabase";
+// src/pages/api/answers.ts
+import type { APIRoute } from "astro";
+import { supabase } from "../../lib/supabase";
 import { handleSupabaseError, handleRequestError } from "../../lib/apiHelpers";
 
- export const POST: APIRoute = async ({ request, locals, redirect }) => {
- console.log("API Route /api/answers: locals:", locals); // Keep this log
- // Authentication Check (handled by middleware, but good to double-check)
- if (!locals.userId) {
-     return new Response(JSON.stringify({ error: "Unauthorized" }), {
-     status: 401,
-     headers: { 'Content-Type': 'application/json' }
-     });
- }
+export const POST: APIRoute = async ({ request, locals, redirect }) => {
+  console.log("API Route /api/answers: locals:", locals); // Keep this log
 
- try {
-     const { questionId, answerId } = await request.json();
+  try {
+    const { questionId, answerId } = await request.json();
 
-     // Validate input (important for security and data integrity)
-     if (!questionId || (answerId === undefined)) {
-     return new Response(
-         JSON.stringify({ error: "questionId and answerId are required" }),
-         { status: 400, headers: { 'Content-Type': 'application/json' } },
-     );
-     }
-
-     // Use upsert to insert or update the result
-     const { error } = await supabase
-     .from("results")
-     .upsert(
-         {
-         user_id: locals.userId,
-         question_id: questionId,
-         answer_id: answerId,
-         },
-         { onConflict: 'user_id,question_id' }
-     )
-     .select();
-
-     if (error) {
-        return handleSupabaseError(error, "Failed to save answer"); // Use the helper
-      }
-
-     return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    } catch (error) {
-        return handleRequestError(error, "Invalid request body"); // Use new helper
+    // Validate input (important for security and data integrity)
+    if (!questionId || (answerId === undefined)) {
+      return new Response(
+        JSON.stringify({ error: "questionId and answerId are required" }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      );
     }
- };
+
+    // Use upsert to insert or update the result
+    const { error } = await supabase
+      .from("results")
+      .upsert(
+        {
+          user_id: locals.userId,
+          question_id: questionId,
+          answer_id: answerId,
+        },
+        { onConflict: 'user_id,question_id' }
+      )
+      .select();
+
+    if (error) {
+      return handleSupabaseError(error, "Failed to save answer"); // Use the helper
+    }
+
+    return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  } catch (error) {
+    return handleRequestError(error, "Invalid request body"); // Use new helper
+  }
+};
 ```
 ---
 
@@ -1549,30 +1571,24 @@ import { supabase } from "../../lib/supabase";
 import { handleRequestError, handleAuthError } from "../../lib/apiHelpers";
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (!locals.userId) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
   try {
     const requestData = await request.json();
+    const updateData: { [key: string]: any } = {};
+    if ('name' in requestData) updateData.name = requestData.name;
+    if ('school' in requestData) updateData.school = requestData.school;
+    if ('phone' in requestData) updateData.phone = requestData.phone;
+    if ('is_participant' in requestData) updateData.is_participant = requestData.is_participant;
+    if ('is_visible' in requestData) updateData.is_visible = requestData.is_visible;
 
-    const name = 'name' in requestData ? requestData.name : locals.name;
-    const school = 'school' in requestData ? requestData.school : locals.school;
-    const phone = 'phone' in requestData ? requestData.phone : locals.phone;
-    const is_participant = 'is_participant' in requestData ? requestData.is_participant : locals.is_participant;
-    const is_visible = 'is_visible' in requestData ? requestData.is_visible : locals.is_visible;
+    if (Object.keys(updateData).length === 0) {
+      return new Response(JSON.stringify({ message: "No data provided to update" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     const { error } = await supabase.auth.updateUser({
-      data: {
-        name: name,
-        school: school,
-        phone: phone,
-        is_participant: is_participant,
-        is_visible: is_visible,
-      },
+      data: updateData,
     });
 
     if (error) {
@@ -1584,7 +1600,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-     return handleRequestError(error, "Invalid request body");
+    return handleRequestError(error, "Invalid request body");
   }
 };
 ```

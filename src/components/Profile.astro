@@ -76,8 +76,11 @@ function formatDate(dateString: string | undefined) {
 
   if (editProfileButton && dialog) {
     editProfileButton.addEventListener("click", () => {
-      dialog.style.display = "flex";
-      dialog.open = true;
+      if (typeof dialog.show === 'function') {
+        dialog.show();
+      } else {
+        dialog.open = true;
+      }
     });
   }
 </script>

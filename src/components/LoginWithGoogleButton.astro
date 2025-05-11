@@ -1,0 +1,40 @@
+---
+interface Props {
+  buttonType?: 'text' | 'filled' | 'outlined'; // Material types
+  buttonText: string;
+  class?: string; // Allow passing additional classes
+}
+const { buttonType = 'text', buttonText, class: className } = Astro.props;
+---
+<form action="/api/auth/signin" method="post" class:list={[className]}>
+  {buttonType === 'text' && (
+    <md-text-button class="button" name="provider" value="google" type="submit">
+      {buttonText}
+    </md-text-button>
+  )}
+  {buttonType === 'filled' && (
+    <md-filled-button class="button" name="provider" value="google" type="submit">
+      {buttonText}
+    </md-filled-button>
+  )}
+  {buttonType === 'outlined' && (
+    <md-outlined-button class="button" name="provider" value="google" type="submit">
+      {buttonText}
+    </md-outlined-button>
+  )}
+</form>
+
+<script>
+  import "material/button/text-button";
+  import "material/button/filled-button";
+  import "material/button/outlined-button";
+</script>
+
+<style>
+.button {
+  font-family: "Open Sans Variable", sans-serif;
+}
+form {
+  display: inline-block;
+}
+</style>

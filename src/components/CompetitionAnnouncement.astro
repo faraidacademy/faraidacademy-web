@@ -1,6 +1,7 @@
 ---
 import { Icon } from "astro-icon/components";
 import Countdown from "./Countdown.astro";
+import LoginWithGoogleButton from './LoginWithGoogleButton.astro';
 
 interface Props {
     isLoggedIn: boolean;
@@ -23,11 +24,7 @@ const { isLoggedIn } = Astro.props;
         isLoggedIn ? (
             <md-filled-button href="/competition">JOIN</md-filled-button>
         ) : (
-            <form action="/api/auth/signin" method="post">
-                <md-filled-button type="submit" name="provider" value="google">
-                    JOIN
-                </md-filled-button>
-            </form>
+            <LoginWithGoogleButton buttonType="filled" buttonText="JOIN" />
         )
     }
 </md-outlined-card>
