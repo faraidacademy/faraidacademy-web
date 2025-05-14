@@ -3,13 +3,15 @@
 import Form from "../components/Form.astro"
 import Base from "../layout/Base.astro";
 import Profile from "../components/Profile.astro";
+import WelcomeCompetitionPrompt from "../components/WelcomeCompetitionPrompt.astro";
 const { name, school, phone, is_participant, is_visible } = Astro.locals;
 ---
 
 <Base title="Dashboard">
-<Profile />
+  <WelcomeCompetitionPrompt userName={name} isParticipant={is_participant} />
+  <Profile />
   <md-text-button class="logout" href="/api/auth/signout">KELUAR</md-text-button>
-<Form userName={name} userSchool={school} userPhone={phone} userIsParticipant={is_participant} userIsVisible={is_visible}></Form>
+  <Form userName={name} userSchool={school} userPhone={phone} userIsVisible={is_visible}></Form>
 </Base>
 
 <script>

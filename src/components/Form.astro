@@ -8,7 +8,6 @@ interface Props {
     userSchool?: string;
     userPhone?: string;
     userGender?: string;
-    userIsParticipant?: boolean;
     userIsVisible?: boolean;
 }
 
@@ -17,7 +16,6 @@ const {
     userSchool = "",
     userPhone = "",
     userGender = "",
-    userIsParticipant = false,
     userIsVisible = false,
 } = Astro.props;
 ---
@@ -60,17 +58,6 @@ const {
                 </div>
             </div>
 <md-divider></md-divider>
-        <label class="competition-checkbox">
-            <md-checkbox
-                name="is_participant"
-                touch-target="wrapper"
-                checked={userIsParticipant}
-                value="true"
-                disabled={userIsParticipant}
-            ></md-checkbox>
-            <span>Partisipasi dalam <strong>Kompetisi Faraid 2025</strong>
-        </label>
-        
 
         <label>
             <md-checkbox
@@ -113,16 +100,12 @@ const {
         ).value;
         const phone = (form.querySelector('[name="phone"]') as HTMLInputElement)
             .value;
-        const isParticipant =
-            (form.querySelector('[name="is_participant"]') as HTMLInputElement)
-                ?.checked || false;
         const isVisible =
             (form.querySelector('[name="is_visible"]') as HTMLInputElement)
                 ?.checked || false;
-
-                const genderElement = form.querySelector('[name="gender"]:checked') as HTMLInputElement;
-    const gender = genderElement ? genderElement.value : '';  // Get selected value, default to "" if none
-    console.log("Gender:", gender)
+        const genderElement = form.querySelector('[name="gender"]:checked') as HTMLInputElement;
+        const gender = genderElement ? genderElement.value : '';
+        console.log("Gender:", gender)
 
         if (!form.checkValidity()) {
             form.reportValidity();
@@ -136,13 +119,12 @@ const {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-    name,
-    school,
-    phone,
-    gender,
-    is_participant: isParticipant,
-    is_visible: isVisible,
-}),
+                    name,
+                    school,
+                    phone,
+                    gender,
+                    is_visible: isVisible,
+                }),
             });
 
             if (!response.ok) {

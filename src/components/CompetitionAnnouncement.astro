@@ -5,9 +5,10 @@ import LoginWithGoogleButton from './LoginWithGoogleButton.astro';
 
 interface Props {
     isLoggedIn: boolean;
+    isParticipant?: boolean;
 }
 
-const { isLoggedIn } = Astro.props;
+const { isLoggedIn, isParticipant = false } = Astro.props;
 ---
 
 <md-outlined-card class="card col" id="competition-card">
@@ -22,7 +23,11 @@ const { isLoggedIn } = Astro.props;
     </div>
     {
         isLoggedIn ? (
-            <md-filled-button href="/competition">JOIN</md-filled-button>
+            isParticipant ? (
+                <md-filled-button href="/competition">VIEW COMPETITION</md-filled-button>
+            ) : (
+                <md-filled-button id="announcement-join-button">JOIN COMPETITION</md-filled-button>
+            )
         ) : (
             <LoginWithGoogleButton buttonType="filled" buttonText="JOIN" />
         )
@@ -38,12 +43,35 @@ const { isLoggedIn } = Astro.props;
     document.addEventListener('DOMContentLoaded', () => {
         const closeButton = document.getElementById("close-button");
         const card = document.getElementById("competition-card");
-
-        closeButton?.addEventListener("click", () => {
-            if (card) {
+        const joinButton = document.getElementById("announcement-join-button");
+        if (closeButton && card) {
+            closeButton.addEventListener("click", () => {
                 card.style.display = card.style.display === "none" ? "" : "none";
-            }
-        });
+            });
+        }
+        if (joinButton) {
+            joinButton.addEventListener("click", async (e) => {
+                e.preventDefault();
+                (joinButton as HTMLButtonElement).disabled = true;
+                try {
+                    const response = await fetch("/api/profile", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ is_participant: true })
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        alert(errorData.error || "Failed to join competition");
+                        (joinButton as HTMLButtonElement).disabled = false;
+                        return;
+                    }
+                    window.location.href = "/competition";
+                } catch (err) {
+                    alert("An unexpected error occurred.");
+                    (joinButton as HTMLButtonElement).disabled = false;
+                }
+            });
+        }
     });
 
 </script>

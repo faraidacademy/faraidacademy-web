@@ -7,6 +7,7 @@ import { Icon } from "astro-icon/components";
 import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro";
 
 const isLoggedIn = !!Astro.locals.userId;
+const isParticipant = !!Astro.locals.is_participant;
 ---
 
 <Base title="Faraid Academy - Home">
@@ -37,7 +38,7 @@ const isLoggedIn = !!Astro.locals.userId;
         </p>
       </div>
     </div>
-    <CompetitionAnnouncement isLoggedIn={isLoggedIn} />
+    <CompetitionAnnouncement isLoggedIn={isLoggedIn} isParticipant={isParticipant} />
   </main>
 </Base>
 <style>
