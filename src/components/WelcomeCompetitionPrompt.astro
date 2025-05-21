@@ -13,14 +13,14 @@ const showPrompt = typeof window === 'undefined' ? true : (!isParticipant && !wi
 {!isParticipant && (
   <md-dialog id="competition-welcome-dialog" open>
     <div slot="headline">
-      <Icon name="trophy2a" /> Welcome to Faraid Academy, {userName}! 👋
+    Selamat datang, {userName}
     </div>
     <div slot="content">
-      Ready to join the Faraid Competition 2025?
+      Apakah anda ingin berpartisipasi dalam <br> <Icon name="trophy2a" /><strong> Faraid Competition 2025</strong>?
     </div>
     <div slot="actions">
-      <md-filled-button id="prompt-join-competition">Yes, Join Now!</md-filled-button>
-      <md-text-button id="prompt-dismiss-competition">Maybe Later</md-text-button>
+      <md-filled-button id="prompt-join-competition">Ya</md-filled-button>
+      <md-text-button id="prompt-dismiss-competition">Mungkin nanti</md-text-button>
     </div>
   </md-dialog>
 )}
@@ -64,6 +64,7 @@ const showPrompt = typeof window === 'undefined' ? true : (!isParticipant && !wi
 </script>
 <style>
 #competition-welcome-dialog {
-  z-index: 1000;
+    z-index: 1000;
+    margin: auto;
 }
 </style>

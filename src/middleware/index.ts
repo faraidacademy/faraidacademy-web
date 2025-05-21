@@ -14,48 +14,36 @@ const protectedAPIRoutes = ["/api/answers(|/)", "/api/profile(|/)"];
 
 export const onRequest = defineMiddleware(
   async ({ locals, url, cookies, redirect }, next) => {
+    // Always attempt to set session data for ALL requests if cookies are present.
+    // This will populate Astro.locals if the user is logged in.
+    const isUserLoggedIn = await checkAndSetSession(cookies, locals);
+
     if (micromatch.isMatch(url.pathname, protectedRoutes)) {
-      const isLoggedIn = await checkAndSetSession(cookies, locals);
-      if (!isLoggedIn) {
+      if (!isUserLoggedIn) {
+        // The route is protected and user is not logged in, redirect.
         return redirect("/signin");
       }
     }
 
     if (micromatch.isMatch(url.pathname, redirectRoutes)) {
-      const isLoggedIn = await checkAndSetSession(cookies);
-      if (isLoggedIn) {
+      if (isUserLoggedIn) {
+        // Route is a signin/register page and user is logged in, redirect.
         return redirect("/dashboard");
       }
     }
 
     if (micromatch.isMatch(url.pathname, protectedAPIRoutes)) {
-      const refreshToken = cookies.get("sb-refresh-token");
-        console.log("Middleware: Checking API route:", url.pathname, refreshToken);
-
-      if (!refreshToken) {
-          return new Response(
-            JSON.stringify({
-              error: "Unauthorized",
-            }),
-            { status: 401, headers: { "Content-Type": "application/json" } },
-          );
+      // For protected API routes, if Astro.locals.userId wasn't populated by checkAndSetSession,
+      // it means the user is not authenticated.
+      if (!locals.userId) {
+        return new Response(
+          JSON.stringify({
+            error: "Unauthorized",
+          }),
+          { status: 401, headers: { "Content-Type": "application/json" } },
+        );
       }
-
-      const { data: { session }, error } = await supabase.auth.getSession();
-        console.log("Middleware: session:", session, "error:", error);
-
-        if (error || !session) {
-            clearAuthCookies(cookies);
-            return new Response(
-                JSON.stringify({
-                    error: "Unauthorized",
-                }),
-                { status: 401, headers: { "Content-Type": "application/json" } },
-            );
-        }
-
-      locals.userId = session.user.id;
-
+      // locals.userId is already available if isUserLoggedIn was true.
     }
 
     return next();

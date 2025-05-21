@@ -9,9 +9,6 @@ export default defineConfig({
   image: {
     domains: ["googleusercontent.com"],
   },
-  experimental: {
-    svg: true,
-  },
   output: 'server',
 
   adapter: netlify({

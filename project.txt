@@ -13,9 +13,6 @@ export default defineConfig({
   image: {
     domains: ["googleusercontent.com"],
   },
-  experimental: {
-    svg: true,
-  },
   output: 'server',
 
   adapter: netlify({
@@ -119,9 +116,10 @@ import LoginWithGoogleButton from './LoginWithGoogleButton.astro';
 
 interface Props {
     isLoggedIn: boolean;
+    isParticipant?: boolean;
 }
 
-const { isLoggedIn } = Astro.props;
+const { isLoggedIn, isParticipant = false } = Astro.props;
 ---
 
 <md-outlined-card class="card col" id="competition-card">
@@ -136,7 +134,11 @@ const { isLoggedIn } = Astro.props;
     </div>
     {
         isLoggedIn ? (
-            <md-filled-button href="/competition">JOIN</md-filled-button>
+            isParticipant ? (
+                <md-filled-button href="/competition">VIEW COMPETITION</md-filled-button>
+            ) : (
+                <md-filled-button id="announcement-join-button">JOIN COMPETITION</md-filled-button>
+            )
         ) : (
             <LoginWithGoogleButton buttonType="filled" buttonText="JOIN" />
         )
@@ -152,12 +154,35 @@ const { isLoggedIn } = Astro.props;
     document.addEventListener('DOMContentLoaded', () => {
         const closeButton = document.getElementById("close-button");
         const card = document.getElementById("competition-card");
-
-        closeButton?.addEventListener("click", () => {
-            if (card) {
+        const joinButton = document.getElementById("announcement-join-button");
+        if (closeButton && card) {
+            closeButton.addEventListener("click", () => {
                 card.style.display = card.style.display === "none" ? "" : "none";
-            }
-        });
+            });
+        }
+        if (joinButton) {
+            joinButton.addEventListener("click", async (e) => {
+                e.preventDefault();
+                (joinButton as HTMLButtonElement).disabled = true;
+                try {
+                    const response = await fetch("/api/profile", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ is_participant: true })
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        alert(errorData.error || "Failed to join competition");
+                        (joinButton as HTMLButtonElement).disabled = false;
+                        return;
+                    }
+                    window.location.href = "/competition";
+                } catch (err) {
+                    alert("An unexpected error occurred.");
+                    (joinButton as HTMLButtonElement).disabled = false;
+                }
+            });
+        }
     });
 
 </script>
@@ -391,7 +416,6 @@ interface Props {
     userSchool?: string;
     userPhone?: string;
     userGender?: string;
-    userIsParticipant?: boolean;
     userIsVisible?: boolean;
 }
 
@@ -400,7 +424,6 @@ const {
     userSchool = "",
     userPhone = "",
     userGender = "",
-    userIsParticipant = false,
     userIsVisible = false,
 } = Astro.props;
 ---
@@ -443,17 +466,6 @@ const {
                 </div>
             </div>
 <md-divider></md-divider>
-        <label class="competition-checkbox">
-            <md-checkbox
-                name="is_participant"
-                touch-target="wrapper"
-                checked={userIsParticipant}
-                value="true"
-                disabled={userIsParticipant}
-            ></md-checkbox>
-            <span>Partisipasi dalam <strong>Kompetisi Faraid 2025</strong>
-        </label>
-        
 
         <label>
             <md-checkbox
@@ -496,16 +508,12 @@ const {
         ).value;
         const phone = (form.querySelector('[name="phone"]') as HTMLInputElement)
             .value;
-        const isParticipant =
-            (form.querySelector('[name="is_participant"]') as HTMLInputElement)
-                ?.checked || false;
         const isVisible =
             (form.querySelector('[name="is_visible"]') as HTMLInputElement)
                 ?.checked || false;
-
-                const genderElement = form.querySelector('[name="gender"]:checked') as HTMLInputElement;
-    const gender = genderElement ? genderElement.value : '';  // Get selected value, default to "" if none
-    console.log("Gender:", gender)
+        const genderElement = form.querySelector('[name="gender"]:checked') as HTMLInputElement;
+        const gender = genderElement ? genderElement.value : '';
+        console.log("Gender:", gender)
 
         if (!form.checkValidity()) {
             form.reportValidity();
@@ -519,13 +527,12 @@ const {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-    name,
-    school,
-    phone,
-    gender,
-    is_participant: isParticipant,
-    is_visible: isVisible,
-}),
+                    name,
+                    school,
+                    phone,
+                    gender,
+                    is_visible: isVisible,
+                }),
             });
 
             if (!response.ok) {
@@ -951,6 +958,13 @@ function formatDate(dateString: string | undefined) {
       <Icon name="material-symbols:person-rounded" />
       {formatDate(createdAt)}
     </p>
+    {
+      !is_participant && (
+        <md-filled-button id="join-competition-profile-button">
+          Join Faraid Competition 2025
+        </md-filled-button>
+      )
+    }
   </div>
 
   <md-text-button id="edit-profile-button"><Icon slot="icon" name="material-symbols:edit-square-rounded" /> EDIT PROFIL</md-text-button>
@@ -958,6 +972,7 @@ function formatDate(dateString: string | undefined) {
 
 <script>
   import "material/button/text-button";
+  import "material/button/filled-button";
   import "material/card/elevated-card";
 
   const editProfileButton = document.getElementById("edit-profile-button");
@@ -972,6 +987,33 @@ function formatDate(dateString: string | undefined) {
       }
     });
   }
+
+  document.addEventListener("astro:page-load", () => {
+    const joinButton = document.getElementById("join-competition-profile-button");
+    if (joinButton) {
+      joinButton.addEventListener("click", async (e) => {
+        e.preventDefault();
+        (joinButton as HTMLButtonElement).disabled = true;
+        try {
+          const response = await fetch("/api/profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ is_participant: true })
+          });
+          if (!response.ok) {
+            const errorData = await response.json();
+            alert(errorData.error || "Failed to join competition");
+            (joinButton as HTMLButtonElement).disabled = false;
+            return;
+          }
+          window.location.reload();
+        } catch (err) {
+          alert("An unexpected error occurred.");
+          (joinButton as HTMLButtonElement).disabled = false;
+        }
+      });
+    }
+  });
 </script>
 
 <style>
@@ -1013,6 +1055,15 @@ function formatDate(dateString: string | undefined) {
   }
   md-text-button {
     font-family: "Open Sans Variable", sans-serif;
+  }
+
+  #join-competition-profile-button {
+    margin-top: 1em;
+    font-weight: 600;
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
   }
 
 [data-icon]{
@@ -1103,6 +1154,82 @@ import { Icon } from "astro-icon/components";
 
   document.getElementById("themeToggle")?.addEventListener("click", handleToggleClick);});
 </script>
+```
+---
+
+`src/components/WelcomeCompetitionPrompt.astro`:
+```
+---
+import "material/dialog/dialog";
+import "material/button/filled-button";
+import "material/button/text-button";
+import { Icon } from "astro-icon/components";
+interface Props {
+  userName: string;
+  isParticipant: boolean | undefined;
+}
+const { userName, isParticipant } = Astro.props;
+const showPrompt = typeof window === 'undefined' ? true : (!isParticipant && !window.localStorage.getItem('competitionPromptDismissed'));
+---
+{!isParticipant && (
+  <md-dialog id="competition-welcome-dialog" open>
+    <div slot="headline">
+    Selamat datang, {userName}
+    </div>
+    <div slot="content">
+      Apakah anda ingin berpartisipasi dalam <br> <Icon name="trophy2a" /><strong> Faraid Competition 2025</strong>?
+    </div>
+    <div slot="actions">
+      <md-filled-button id="prompt-join-competition">Ya</md-filled-button>
+      <md-text-button id="prompt-dismiss-competition">Mungkin nanti</md-text-button>
+    </div>
+  </md-dialog>
+)}
+<script>
+  import "material/dialog/dialog";
+  import "material/button/filled-button";
+  import "material/button/text-button";
+  document.addEventListener("astro:page-load", () => {
+    const dialog = document.getElementById("competition-welcome-dialog");
+    const joinBtn = document.getElementById("prompt-join-competition");
+    const dismissBtn = document.getElementById("prompt-dismiss-competition");
+    if (joinBtn) {
+      joinBtn.addEventListener("click", async () => {
+        (joinBtn as HTMLButtonElement).disabled = true;
+        try {
+          const response = await fetch("/api/profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ is_participant: true })
+          });
+          if (!response.ok) {
+            const errorData = await response.json();
+            alert(errorData.error || "Failed to join competition");
+            (joinBtn as HTMLButtonElement).disabled = false;
+            return;
+          }
+          window.location.reload();
+        } catch (err) {
+          alert("An unexpected error occurred.");
+          (joinBtn as HTMLButtonElement).disabled = false;
+        }
+      });
+    }
+    if (dismissBtn) {
+      dismissBtn.addEventListener("click", () => {
+        window.localStorage.setItem('competitionPromptDismissed', 'true');
+        if (dialog && typeof (dialog as HTMLDialogElement).close === 'function') (dialog as HTMLDialogElement).close();
+      });
+    }
+  });
+</script>
+<style>
+#competition-welcome-dialog {
+    z-index: 1000;
+    margin: auto;
+}
+</style>
+
 ```
 ---
 
@@ -1311,48 +1438,36 @@ const protectedAPIRoutes = ["/api/answers(|/)", "/api/profile(|/)"];
 
 export const onRequest = defineMiddleware(
   async ({ locals, url, cookies, redirect }, next) => {
+    // Always attempt to set session data for ALL requests if cookies are present.
+    // This will populate Astro.locals if the user is logged in.
+    const isUserLoggedIn = await checkAndSetSession(cookies, locals);
+
     if (micromatch.isMatch(url.pathname, protectedRoutes)) {
-      const isLoggedIn = await checkAndSetSession(cookies, locals);
-      if (!isLoggedIn) {
+      if (!isUserLoggedIn) {
+        // The route is protected and user is not logged in, redirect.
         return redirect("/signin");
       }
     }
 
     if (micromatch.isMatch(url.pathname, redirectRoutes)) {
-      const isLoggedIn = await checkAndSetSession(cookies);
-      if (isLoggedIn) {
+      if (isUserLoggedIn) {
+        // Route is a signin/register page and user is logged in, redirect.
         return redirect("/dashboard");
       }
     }
 
     if (micromatch.isMatch(url.pathname, protectedAPIRoutes)) {
-      const refreshToken = cookies.get("sb-refresh-token");
-        console.log("Middleware: Checking API route:", url.pathname, refreshToken);
-
-      if (!refreshToken) {
-          return new Response(
-            JSON.stringify({
-              error: "Unauthorized",
-            }),
-            { status: 401, headers: { "Content-Type": "application/json" } },
-          );
+      // For protected API routes, if Astro.locals.userId wasn't populated by checkAndSetSession,
+      // it means the user is not authenticated.
+      if (!locals.userId) {
+        return new Response(
+          JSON.stringify({
+            error: "Unauthorized",
+          }),
+          { status: 401, headers: { "Content-Type": "application/json" } },
+        );
       }
-
-      const { data: { session }, error } = await supabase.auth.getSession();
-        console.log("Middleware: session:", session, "error:", error);
-
-        if (error || !session) {
-            clearAuthCookies(cookies);
-            return new Response(
-                JSON.stringify({
-                    error: "Unauthorized",
-                }),
-                { status: 401, headers: { "Content-Type": "application/json" } },
-            );
-        }
-
-      locals.userId = session.user.id;
-
+      // locals.userId is already available if isUserLoggedIn was true.
     }
 
     return next();
@@ -1368,13 +1483,15 @@ export const onRequest = defineMiddleware(
 import Form from "../components/Form.astro"
 import Base from "../layout/Base.astro";
 import Profile from "../components/Profile.astro";
+import WelcomeCompetitionPrompt from "../components/WelcomeCompetitionPrompt.astro";
 const { name, school, phone, is_participant, is_visible } = Astro.locals;
 ---
 
 <Base title="Dashboard">
-<Profile />
+  <WelcomeCompetitionPrompt userName={name} isParticipant={is_participant} />
+  <Profile />
   <md-text-button class="logout" href="/api/auth/signout">KELUAR</md-text-button>
-<Form userName={name} userSchool={school} userPhone={phone} userIsParticipant={is_participant} userIsVisible={is_visible}></Form>
+  <Form userName={name} userSchool={school} userPhone={phone} userIsVisible={is_visible}></Form>
 </Base>
 
 <script>
@@ -1402,6 +1519,7 @@ import { Icon } from "astro-icon/components";
 import CompetitionAnnouncement from "../components/CompetitionAnnouncement.astro";
 
 const isLoggedIn = !!Astro.locals.userId;
+const isParticipant = !!Astro.locals.is_participant;
 ---
 
 <Base title="Faraid Academy - Home">
@@ -1410,7 +1528,7 @@ const isLoggedIn = !!Astro.locals.userId;
       <div class="main-verse col">
         <div class="verse row">
           <Icon class="flip" name="parenthesis" size="1.5em" />
-          <Ayat height="3em" ; fill="var(--md-sys-color-on-surface)" />
+          <Ayat height="3em" ; fill="currentColor" />
           <Icon name="parenthesis" size="1.5em" />
         </div>
         <div class="translation col">
@@ -1432,7 +1550,7 @@ const isLoggedIn = !!Astro.locals.userId;
         </p>
       </div>
     </div>
-    <CompetitionAnnouncement isLoggedIn={isLoggedIn} />
+    <CompetitionAnnouncement isLoggedIn={isLoggedIn} isParticipant={isParticipant} />
   </main>
 </Base>
 <style>
