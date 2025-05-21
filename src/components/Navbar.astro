@@ -14,12 +14,13 @@ import { links } from "../data/links";
         aria-label="Toggle navigation"
     />
     <div id="nav-links" class="hidden col">
-            {
-                links.map((link) => (
-                        <a class="col" href={link.href}>{link.text}</a>
-                ))
-            }
-        </ul>
+        {
+            links.map((link) => (
+                <a class="col" href={link.href}>
+                    {link.text}
+                </a>
+            ))
+        }
     </div>
 </nav>
 
@@ -44,8 +45,6 @@ import { links } from "../data/links";
         justify-content: space-between;
         width: 100%;
     }
-
-   
 
     #nav-links {
         position: absolute;
@@ -79,8 +78,8 @@ import { links } from "../data/links";
     }
 
     @media (min-width: 600px) {
-    nav {
-      display: none;
+        nav {
+            display: none;
+        }
     }
-  }
 </style>

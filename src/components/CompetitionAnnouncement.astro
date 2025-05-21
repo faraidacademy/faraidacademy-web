@@ -40,7 +40,7 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
     import "material/card/elevated-card";
     import "material/card/filled-card";
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('astro:page-load', () => { // Changed from DOMContentLoaded
         const closeButton = document.getElementById("close-button");
         const card = document.getElementById("competition-card");
         const joinButton = document.getElementById("announcement-join-button");

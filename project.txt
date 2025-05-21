@@ -140,7 +140,7 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
                 <md-filled-button id="announcement-join-button">JOIN COMPETITION</md-filled-button>
             )
         ) : (
-            <LoginWithGoogleButton buttonType="filled" buttonText="JOIN" />
+            <LoginWithGoogleButton buttonType="filled" buttonText="JOIN" intent="join_competition" />
         )
     }
 </md-outlined-card>
@@ -720,10 +720,12 @@ interface Props {
   buttonType?: 'text' | 'filled' | 'outlined'; // Material types
   buttonText: string;
   class?: string; // Allow passing additional classes
+  intent?: string; // Add this
 }
-const { buttonType = 'text', buttonText, class: className } = Astro.props;
+const { buttonType = 'text', buttonText, class: className, intent } = Astro.props; // Add intent
 ---
 <form action="/api/auth/signin" method="post" class:list={[className]}>
+  {intent && <input type="hidden" name="intent" value={intent} />} {/* Add this line */}
   {buttonType === 'text' && (
     <md-text-button class="button" name="provider" value="google" type="submit">
       {buttonText}
@@ -1059,11 +1061,6 @@ function formatDate(dateString: string | undefined) {
 
   #join-competition-profile-button {
     margin-top: 1em;
-    font-weight: 600;
-    background: var(--md-sys-color-primary-container);
-    color: var(--md-sys-color-on-primary-container);
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
   }
 
 [data-icon]{
@@ -1164,49 +1161,83 @@ import "material/dialog/dialog";
 import "material/button/filled-button";
 import "material/button/text-button";
 import { Icon } from "astro-icon/components";
+
 interface Props {
   userName: string;
   isParticipant: boolean | undefined;
 }
 const { userName, isParticipant } = Astro.props;
-const showPrompt = typeof window === 'undefined' ? true : (!isParticipant && !window.localStorage.getItem('competitionPromptDismissed'));
 ---
-{!isParticipant && (
-  <md-dialog id="competition-welcome-dialog" open>
-    <div slot="headline">
-    Selamat datang, {userName}
-    </div>
-    <div slot="content">
-      Apakah anda ingin berpartisipasi dalam <br> <Icon name="trophy2a" /><strong> Faraid Competition 2025</strong>?
-    </div>
-    <div slot="actions">
-      <md-filled-button id="prompt-join-competition">Ya</md-filled-button>
-      <md-text-button id="prompt-dismiss-competition">Mungkin nanti</md-text-button>
-    </div>
-  </md-dialog>
-)}
+
+{
+  !isParticipant && (
+    <md-dialog id="competition-welcome-dialog">
+      <div slot="headline">Selamat datang, {userName}</div>
+      <div slot="content">
+        Apakah anda ingin berpartisipasi dalam <br />{" "}
+        <>
+          <Icon name="trophy2a" />
+          <strong> Faraid Competition 2025</strong>
+        </>
+        ?
+      </div>
+      <div slot="actions">
+        <md-filled-button id="prompt-join-competition">Ya</md-filled-button>
+        <md-text-button id="prompt-dismiss-competition">
+          Mungkin nanti
+        </md-text-button>
+      </div>
+    </md-dialog>
+  )
+}
 <script>
   import "material/dialog/dialog";
   import "material/button/filled-button";
   import "material/button/text-button";
+
+  // Define a type for dialog elements that might have MWC or native dialog APIs
+  type DialogLikeElement = HTMLElement & {
+    open?: boolean;
+    show?: () => void; // Common in MWC
+    showModal?: () => void; // Native dialog
+    close: (reason?: string) => void;
+  };
+
   document.addEventListener("astro:page-load", () => {
-    const dialog = document.getElementById("competition-welcome-dialog");
+    const dialog = document.getElementById(
+      "competition-welcome-dialog",
+    ) as DialogLikeElement | null;
     const joinBtn = document.getElementById("prompt-join-competition");
     const dismissBtn = document.getElementById("prompt-dismiss-competition");
-    if (joinBtn) {
+
+    if (dialog && !window.localStorage.getItem("competitionPromptDismissed")) {
+      if (typeof dialog.show === "function") {
+        dialog.show(); // Prefer MWC .show()
+      } else if (typeof dialog.showModal === "function") {
+        dialog.showModal();
+      } else {
+        dialog.open = true;
+      }
+    }
+
+    if (joinBtn && dialog) {
       joinBtn.addEventListener("click", async () => {
         (joinBtn as HTMLButtonElement).disabled = true;
         try {
           const response = await fetch("/api/profile", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ is_participant: true })
+            body: JSON.stringify({ is_participant: true }),
           });
           if (!response.ok) {
             const errorData = await response.json();
             alert(errorData.error || "Failed to join competition");
             (joinBtn as HTMLButtonElement).disabled = false;
             return;
+          }
+          // Successfully joined
+          if (typeof dialog.close === "function") {
+            dialog.close(); // Close the dialog before reloading
           }
           window.location.reload();
         } catch (err) {
@@ -1215,19 +1246,22 @@ const showPrompt = typeof window === 'undefined' ? true : (!isParticipant && !wi
         }
       });
     }
-    if (dismissBtn) {
+
+    if (dismissBtn && dialog) {
       dismissBtn.addEventListener("click", () => {
-        window.localStorage.setItem('competitionPromptDismissed', 'true');
-        if (dialog && typeof (dialog as HTMLDialogElement).close === 'function') (dialog as HTMLDialogElement).close();
+        window.localStorage.setItem("competitionPromptDismissed", "true");
+        if (typeof dialog.close === "function") {
+          dialog.close();
+        }
       });
     }
   });
 </script>
 <style>
-#competition-welcome-dialog {
+  #competition-welcome-dialog {
     z-index: 1000;
     margin: auto;
-}
+  }
 </style>
 
 ```
@@ -1732,6 +1766,7 @@ import { supabase } from "../../../lib/supabase";
 
 export const GET: APIRoute = async ({ url, cookies, redirect }) => {
   const authCode = url.searchParams.get("code");
+  const intent = url.searchParams.get("intent"); // intent from URL
 
   if (!authCode) {
     return new Response("No code provided", { status: 400 });
@@ -1743,18 +1778,32 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
     return new Response(error.message, { status: 500 });
   }
 
-  const { access_token, refresh_token } = data.session;
+  const { access_token, refresh_token, user } = data.session;
 
   cookies.set("sb-access-token", access_token, {
     path: "/",
-    secure: true,
+    secure: !import.meta.env.DEV, // only in production
     httpOnly: true,
+    sameSite: "lax", // 'lax' or 'strict' based on your needs
   });
   cookies.set("sb-refresh-token", refresh_token, {
     path: "/",
-    secure: true,
+    secure: !import.meta.env.DEV, // only in production
     httpOnly: true,
+    sameSite: "lax", // 'lax' or 'strict'
   });
+
+  // If intent is to join competition, update user metadata
+  if (intent === "join_competition" && user) {
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { is_participant: true }
+    });
+    if (updateError) {
+      // Log error. The user will still be logged in, might see the WelcomeCompetitionPrompt as a fallback.
+      console.error("Failed to auto-set is_participant in callback:", updateError.message);
+    }
+    // User's session will be updated on the next request by the middleware (checkAndSetSession)
+  }
 
   // Create a new URL object for the /dashboard page
   const redirectUrl = new URL('/dashboard', url.origin);
@@ -1775,14 +1824,22 @@ import type { Provider } from "@supabase/supabase-js";
 export const POST: APIRoute = async ({ request, redirect }) => {
   const formData = await request.formData();
   const provider = formData.get("provider")?.toString();
+  const intent = formData.get("intent")?.toString(); // Add this
 
   if (provider) {
+    const baseCallbackUrl = import.meta.env.DEV
+      ? "http://localhost:4321/api/auth/callback"
+      : "https://faraidacademy.netlify.app/api/auth/callback";
+
+    let redirectToUrl = baseCallbackUrl;
+    if (intent === "join_competition") { // Check intent
+      redirectToUrl += "?intent=join_competition"; // Append to URL
+    }
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: provider as Provider,
       options: {
-        redirectTo: import.meta.env.DEV
-          ? "http://localhost:4321/api/auth/callback"
-          : "https://faraidacademy.netlify.app/api/auth/callback",
+        redirectTo: redirectToUrl, // Use the potentially modified URL
       },
     });
 

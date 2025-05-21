@@ -3,49 +3,83 @@ import "material/dialog/dialog";
 import "material/button/filled-button";
 import "material/button/text-button";
 import { Icon } from "astro-icon/components";
+
 interface Props {
   userName: string;
   isParticipant: boolean | undefined;
 }
 const { userName, isParticipant } = Astro.props;
-const showPrompt = typeof window === 'undefined' ? true : (!isParticipant && !window.localStorage.getItem('competitionPromptDismissed'));
 ---
-{!isParticipant && (
-  <md-dialog id="competition-welcome-dialog" open>
-    <div slot="headline">
-    Selamat datang, {userName}
-    </div>
-    <div slot="content">
-      Apakah anda ingin berpartisipasi dalam <br> <Icon name="trophy2a" /><strong> Faraid Competition 2025</strong>?
-    </div>
-    <div slot="actions">
-      <md-filled-button id="prompt-join-competition">Ya</md-filled-button>
-      <md-text-button id="prompt-dismiss-competition">Mungkin nanti</md-text-button>
-    </div>
-  </md-dialog>
-)}
+
+{
+  !isParticipant && (
+    <md-dialog id="competition-welcome-dialog">
+      <div slot="headline">Selamat datang, {userName}</div>
+      <div slot="content">
+        Apakah anda ingin berpartisipasi dalam <br />{" "}
+        <>
+          <Icon name="trophy2a" />
+          <strong> Faraid Competition 2025</strong>
+        </>
+        ?
+      </div>
+      <div slot="actions">
+        <md-filled-button id="prompt-join-competition">Ya</md-filled-button>
+        <md-text-button id="prompt-dismiss-competition">
+          Mungkin nanti
+        </md-text-button>
+      </div>
+    </md-dialog>
+  )
+}
 <script>
   import "material/dialog/dialog";
   import "material/button/filled-button";
   import "material/button/text-button";
+
+  // Define a type for dialog elements that might have MWC or native dialog APIs
+  type DialogLikeElement = HTMLElement & {
+    open?: boolean;
+    show?: () => void; // Common in MWC
+    showModal?: () => void; // Native dialog
+    close: (reason?: string) => void;
+  };
+
   document.addEventListener("astro:page-load", () => {
-    const dialog = document.getElementById("competition-welcome-dialog");
+    const dialog = document.getElementById(
+      "competition-welcome-dialog",
+    ) as DialogLikeElement | null;
     const joinBtn = document.getElementById("prompt-join-competition");
     const dismissBtn = document.getElementById("prompt-dismiss-competition");
-    if (joinBtn) {
+
+    if (dialog && !window.localStorage.getItem("competitionPromptDismissed")) {
+      if (typeof dialog.show === "function") {
+        dialog.show(); // Prefer MWC .show()
+      } else if (typeof dialog.showModal === "function") {
+        dialog.showModal();
+      } else {
+        dialog.open = true;
+      }
+    }
+
+    if (joinBtn && dialog) {
       joinBtn.addEventListener("click", async () => {
         (joinBtn as HTMLButtonElement).disabled = true;
         try {
           const response = await fetch("/api/profile", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ is_participant: true })
+            body: JSON.stringify({ is_participant: true }),
           });
           if (!response.ok) {
             const errorData = await response.json();
             alert(errorData.error || "Failed to join competition");
             (joinBtn as HTMLButtonElement).disabled = false;
             return;
+          }
+          // Successfully joined
+          if (typeof dialog.close === "function") {
+            dialog.close(); // Close the dialog before reloading
           }
           window.location.reload();
         } catch (err) {
@@ -54,17 +88,20 @@ const showPrompt = typeof window === 'undefined' ? true : (!isParticipant && !wi
         }
       });
     }
-    if (dismissBtn) {
+
+    if (dismissBtn && dialog) {
       dismissBtn.addEventListener("click", () => {
-        window.localStorage.setItem('competitionPromptDismissed', 'true');
-        if (dialog && typeof (dialog as HTMLDialogElement).close === 'function') (dialog as HTMLDialogElement).close();
+        window.localStorage.setItem("competitionPromptDismissed", "true");
+        if (typeof dialog.close === "function") {
+          dialog.close();
+        }
       });
     }
   });
 </script>
 <style>
-#competition-welcome-dialog {
+  #competition-welcome-dialog {
     z-index: 1000;
     margin: auto;
-}
+  }
 </style>
