@@ -3,10 +3,12 @@ interface Props {
   buttonType?: 'text' | 'filled' | 'outlined'; // Material types
   buttonText: string;
   class?: string; // Allow passing additional classes
+  intent?: string; // Add this
 }
-const { buttonType = 'text', buttonText, class: className } = Astro.props;
+const { buttonType = 'text', buttonText, class: className, intent } = Astro.props; // Add intent
 ---
 <form action="/api/auth/signin" method="post" class:list={[className]}>
+  {intent && <input type="hidden" name="intent" value={intent} />} {/* Add this line */}
   {buttonType === 'text' && (
     <md-text-button class="button" name="provider" value="google" type="submit">
       {buttonText}

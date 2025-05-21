@@ -29,7 +29,7 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
                 <md-filled-button id="announcement-join-button">JOIN COMPETITION</md-filled-button>
             )
         ) : (
-            <LoginWithGoogleButton buttonType="filled" buttonText="JOIN" />
+            <LoginWithGoogleButton buttonType="filled" buttonText="JOIN" intent="join_competition" />
         )
     }
 </md-outlined-card>
