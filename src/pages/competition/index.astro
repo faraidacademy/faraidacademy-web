@@ -1,15 +1,281 @@
 ---
-// src/pages/competition/index.astro
 import Base from "../../layout/Base.astro";
+import Countdown from "../../components/Countdown.astro";
+import { Icon } from "astro-icon/components";
+import Countdown2 from "../../components/Countdown2.astro";
+const indonesianAbbrLabels = {
+  days: "hr", // Or your preferred abbreviation for hari
+  hours: "j",
+  minutes: "m",
+  seconds: "d", // Assuming 'd' for detik
+  finished: "Selesai!",
 
+};
+const competitionStartDate = "2025-06-17T11:00:00Z";
 ---
 
-<Base title="Competition">
-  <section>
-    <h1>Competition</h1>
-    <p>Select a question to start:</p>
-    <ul>
-        <li><a href="/competition/1">Start Competition</a></li>
-    </ul>
-  </section>
+<Base title="Faraid Competition">
+  <main class="col">
+    <section class="competition-main-page col">
+      <Icon name="trophy2" size="3em" />
+      <h1>Faraid Competition<wbr /> 2025</h1>
+
+      <div class="start-info col">
+        <p>Akan dimulai dalam:</p>
+        <div class="countdown-wrapper">
+          <Countdown2 targetTime={competitionStartDate} />
+        </div>
+        <p class="start-time-display" data-start-date={competitionStartDate}>
+          Pada: <span class="local-start-time">Memuat waktu lokal...</span>
+        </p>
+      </div>
+
+      <div class="actions row">
+        <md-outlined-button id="open-guides-dialog">
+          <Icon name="material-symbols:help-outline-rounded" slot="icon" />
+          Info & Panduan
+        </md-outlined-button>
+
+        <md-filled-button
+          
+          href="/competition/1"
+          trailing-icon
+        >
+          Start Competition
+          <Icon name="material-symbols:play-arrow-rounded" slot="icon" />
+        </md-filled-button>
+      </div>
+    </section>
+
+    <md-dialog id="guides-dialog">
+      <div slot="headline" class="row dialog-headline">
+        <Icon name="material-symbols:menu-book-rounded" size="1.2em" />
+        Competition Guides
+      </div>
+      <div slot="content" id="guides-content" class="col">
+        <p>
+          <strong>1. Read Carefully:</strong> Ensure you understand each question
+          thoroughly before selecting an answer.
+        </p>
+        <p>
+          <strong>2. Time Management:</strong> Pace yourself. The overall competition
+          time and time per question (if applicable) will be indicated.
+        </p>
+        <p>
+          <strong>3. Auto-Save:</strong> Your selected answer for each question is
+          saved automatically when you click on an option. You can change your answer
+          anytime before the competition ends.
+        </p>
+        <p>
+          <strong>4. Navigation:</strong> Use the arrow buttons at the bottom of
+          each question page to move between questions. You can revisit and change
+          answers on previous questions.
+        </p>
+        <p>
+          <strong>5. Submission:</strong> There is no final "submit all" button.
+          Your last selected answers for all questions are considered final when
+          the time ends or when you complete all questions.
+        </p>
+        <p>
+          <strong>6. 'Null' Option (لا شيء مما سبق):</strong> If you believe none
+          of the provided numerical answers are correct for a calculation question,
+          select the "لا شيء مما سبق" (None of the above) option.
+        </p>
+        <p>
+          <strong>7. Technical Issues:</strong> Ensure you have a stable internet
+          connection. In case of minor disruptions, refresh the page. Your progress
+          should be saved.
+        </p>
+        <p>
+          <strong>8. Fair Play:</strong> This is an individual competition. Please
+          adhere to fair play standards.
+        </p>
+        <p><strong>Good luck!</strong></p>
+      </div>
+      <div slot="actions">
+        <md-text-button id="close-guides-dialog" value="close"
+          >Tutup</md-text-button
+        >
+      </div>
+    </md-dialog>
+  </main>
 </Base>
+
+<style>
+  [data-icon="material-symbols:play-arrow-rounded"] {
+    color: var(--md-sys-color-on-primary);
+  }
+  main.col {
+    padding-top: 2em;
+    padding-bottom: 2em;
+    gap: 2em;
+    width: 100%;
+  }
+  h1 {
+    text-wrap: pretty;
+    font-size: 1.1em;
+  }
+  .start-info {
+    gap: 0.5em;
+    margin-bottom: 1em;
+  }
+
+  .start-info p {
+    font-size: 1em;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .countdown-wrapper :global(p.countdown) {
+    font-size: 1.6em !important;
+    font-weight: bold;
+    color: var(--md-sys-color-primary);
+    margin: 0.2em 0;
+  }
+
+  .start-time-display {
+    font-size: 0.9em;
+    opacity: 0.8;
+  }
+  /* You can add specific styles for .start-time-clock if needed */
+  /* e.g., .start-time-display :global(.start-time-clock) { font-weight: bold; } */
+
+
+  .actions {
+    gap: 1em;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1em;
+  }
+
+  md-outlined-button,
+  md-filled-button {
+    min-width: 160px;
+    --md-filled-button-label-text-font-weight: 500;
+    --md-outlined-button-label-text-font-weight: 500;
+  }
+
+  #guides-dialog {
+    margin: auto;
+  }
+
+  .dialog-headline {
+    gap: 0.5em;
+    align-items: center;
+  }
+
+  #guides-dialog div[slot="content"] {
+    gap: 0.8em;
+    padding-top: 0.5em;
+    padding-bottom: 1em;
+  }
+
+  #guides-dialog div[slot="content"] p {
+    text-align: left;
+    line-height: 1.6;
+    font-size: 0.95em;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+  #guides-dialog div[slot="content"] p strong {
+    color: var(--md-sys-color-on-surface);
+    font-weight: 600;
+  }
+</style>
+<script>
+  import "material/dialog/dialog.js";
+  import "material/button/outlined-button.js";
+  import "material/button/filled-button.js";
+  import "material/button/text-button.js";
+
+  type DialogLikeElement = HTMLElement & {
+    open?: boolean;
+    show?: () => void;
+    showModal?: () => void;
+    close: (reason?: string) => void;
+    returnValue?: string;
+  };
+
+  /**
+   * Formats a UTC date string into local date and time parts.
+   * Example output: { datePart: "Selasa, 17 Juni 2025", timePart: "18:00" }
+   */
+  function formatUTCDateToLocalParts(utcDateString: string): 
+    { datePart: string; timePart: string } | 
+    { error: string } 
+  {
+    const date = new Date(utcDateString);
+    if (isNaN(date.getTime())) {
+      return { error: "Invalid date" };
+    }
+
+    // Format date part: "Selasa, 17 Juni 2025"
+    const dateOptions: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    };
+    // 'id-ID' for Indonesian locale to get "Selasa", "Juni"
+    const datePart = date.toLocaleDateString('id-ID', dateOptions);
+
+    // Format time part: "18:00" (24-hour format)
+    const timeOptions: Intl.DateTimeFormatOptions = {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false, // Ensure 24-hour format
+    };
+    // 'en-GB' locale is often used to ensure HH:MM format with a colon.
+    // Some locales might use a dot (e.g., 18.00).
+    const timePart = date.toLocaleTimeString('en-GB', timeOptions);
+
+    return { datePart, timePart };
+  }
+
+  document.addEventListener("astro:page-load", () => {
+    // Dialog logic (unchanged)
+    const guidesDialog = document.getElementById(
+      "guides-dialog",
+    ) as DialogLikeElement | null;
+    const openGuidesButton = document.getElementById("open-guides-dialog");
+    const closeGuidesButton = document.getElementById("close-guides-dialog");
+
+    if (openGuidesButton && guidesDialog) {
+      openGuidesButton.addEventListener("click", () => {
+        if (typeof guidesDialog.show === "function") {
+          guidesDialog.show();
+        } else if (typeof guidesDialog.showModal === "function") {
+          guidesDialog.showModal();
+        } else {
+          guidesDialog.open = true;
+        }
+      });
+    }
+
+    if (closeGuidesButton && guidesDialog) {
+      closeGuidesButton.addEventListener("click", () => {
+        if (typeof guidesDialog.close === "function") {
+          guidesDialog.close();
+        }
+      });
+    }
+
+    // Updated start time display logic
+    const startTimeDisplayElement = document.querySelector<HTMLElement>(".start-time-display");
+    if (startTimeDisplayElement) {
+      const localTimeSpan = startTimeDisplayElement.querySelector<HTMLSpanElement>(".local-start-time");
+      const utcDateString = startTimeDisplayElement.dataset.startDate;
+
+      if (localTimeSpan && utcDateString) {
+        const result = formatUTCDateToLocalParts(utcDateString);
+        if ('error' in result) {
+          localTimeSpan.textContent = result.error;
+        } else {
+          // Set the innerHTML to create the desired structure
+          localTimeSpan.innerHTML = `${result.datePart} <span class="start-time-clock">${result.timePart}</span>`;
+        }
+      } else if (localTimeSpan) {
+        localTimeSpan.textContent = "Tanggal tidak tersedia";
+        console.error("Attribute data-start-date tidak ditemukan atau span .local-start-time tidak ada.");
+      }
+    }
+  });
+</script>

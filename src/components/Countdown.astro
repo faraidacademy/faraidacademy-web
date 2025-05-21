@@ -2,9 +2,17 @@
 interface Props {
   targetTime: string;
   format?: "dhms" | "colon";
+  labels?: {
+    days?: string;
+    hours?: string;
+    minutes?: string;
+    seconds?: string;
+    finished?: string;
+    space?: string; // For space between number and unit, default " "
+  };
 }
 
-const { targetTime, format = "dhms" } = Astro.props;
+const { targetTime, format = "dhms", labels = {} } = Astro.props;
 
 const targetDate: Date = new Date(targetTime);
 const targetTimestamp: number = targetDate.getTime();
@@ -13,10 +21,48 @@ if (isNaN(targetTimestamp)) {
   console.error("Invalid targetTime prop:", targetTime);
 }
 
+// Define default labels and merge with provided ones
+const defaultLabels = {
+  days: format === "colon" ? ":" : "d", // Colon format doesn't use full labels for days
+  hours: format === "colon" ? ":" : "h", // Colon format doesn't use full labels for hours
+  minutes: format === "colon" ? ":" : "m",// Colon format uses colon as separator
+  seconds: format === "colon" ? "" : "s",  // Colon format, seconds has no trailing unit/separator
+  finished: "Countdown finished!",
+  space: " ", // Default space between number and unit
+};
+
+const currentLabels = {
+  days: labels.days !== undefined ? labels.days : defaultLabels.days,
+  hours: labels.hours !== undefined ? labels.hours : defaultLabels.hours,
+  minutes: labels.minutes !== undefined ? labels.minutes : defaultLabels.minutes,
+  seconds: labels.seconds !== undefined ? labels.seconds : defaultLabels.seconds,
+  finished: labels.finished !== undefined ? labels.finished : defaultLabels.finished,
+  space: labels.space !== undefined ? labels.space : defaultLabels.space,
+};
+
+// For colon format, ensure separators are colons if not explicitly overridden for dhms context
+const colonSeparators = {
+    days: labels.days !== undefined && format === "colon" ? labels.days : (format === "colon" ? ":" : currentLabels.days),
+    hours: labels.hours !== undefined && format === "colon" ? labels.hours : (format === "colon" ? ":" : currentLabels.hours),
+    minutes: labels.minutes !== undefined && format === "colon" ? labels.minutes : (format === "colon" ? ":" : currentLabels.minutes),
+    seconds: labels.seconds !== undefined && format === "colon" ? labels.seconds : (format === "colon" ? "" : currentLabels.seconds), // No separator after seconds in colon
+};
+
+
 ---
 
 { !isNaN(targetTimestamp) && (
-  <p class="countdown" data-target={targetTimestamp} data-format={format}>
+  <p
+    class="countdown"
+    data-target={targetTimestamp}
+    data-format={format}
+    data-label-days={format === "colon" ? colonSeparators.days : currentLabels.days}
+    data-label-hours={format === "colon" ? colonSeparators.hours : currentLabels.hours}
+    data-label-minutes={format === "colon" ? colonSeparators.minutes : currentLabels.minutes}
+    data-label-seconds={format === "colon" ? colonSeparators.seconds : currentLabels.seconds}
+    data-label-finished={currentLabels.finished}
+    data-label-space={currentLabels.space}
+  >
     <span class="countdown-text"></span>
   </p>
 )}
@@ -29,25 +75,44 @@ if (isNaN(targetTimestamp)) {
 
 <script>
   function updateCountdown(countdownElement: HTMLParagraphElement) {
-      if (!countdownElement) {
-        return;
-      }
+    if (!countdownElement) {
+      return;
+    }
 
     const targetTimestamp = parseInt(countdownElement.dataset.target || '0', 10);
     const countdownTextSpan = countdownElement.querySelector('.countdown-text') as HTMLSpanElement;
     const format = countdownElement.dataset.format || "dhms";
 
+    // Retrieve labels from data attributes
+    const labelDays = countdownElement.dataset.labelDays || (format === "colon" ? ":" : "d");
+    const labelHours = countdownElement.dataset.labelHours || (format === "colon" ? ":" : "h");
+    const labelMinutes = countdownElement.dataset.labelMinutes || (format === "colon" ? ":" : "m");
+    const labelSeconds = countdownElement.dataset.labelSeconds || (format === "colon" ? "" : "s");
+    const labelFinished = countdownElement.dataset.labelFinished || 'Countdown finished!';
+    const labelSpace = countdownElement.dataset.labelSpace || " ";
+
+
+    if (!countdownTextSpan) { // Added a check for countdownTextSpan
+        console.error("Countdown text span not found in", countdownElement);
+        return;
+    }
+
     if (isNaN(targetTimestamp)) {
-          console.error("Invalid targetTimestamp:", countdownElement.dataset.target);
-          countdownTextSpan.textContent = 'Invalid date';
-          return;
+      console.error("Invalid targetTimestamp:", countdownElement.dataset.target);
+      countdownTextSpan.textContent = 'Invalid date';
+      return;
     }
 
     const now: number = new Date().getTime();
     const timeLeft: number = targetTimestamp - now;
 
     if (timeLeft <= 0) {
-      countdownTextSpan.textContent = 'Countdown finished!';
+      countdownTextSpan.textContent = labelFinished;
+      const existingTimeoutId = parseInt(countdownElement.dataset.timeoutId || '0', 10);
+      if (existingTimeoutId) {
+        clearTimeout(existingTimeoutId);
+        delete countdownElement.dataset.timeoutId; // Clean up
+      }
       return;
     }
 
@@ -60,36 +125,50 @@ if (isNaN(targetTimestamp)) {
 
     if (format === "colon") {
       if (days > 0) {
-        countdownString += `${days}:`;
+        countdownString += `${days}${labelDays}`;
       }
       if (days > 0 || hours > 0) {
-        countdownString += `${String(hours).padStart(2, '0')}:`;
+        countdownString += `${String(hours).padStart(2, '0')}${labelHours}`;
       }
-      countdownString += `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      countdownString += `${String(minutes).padStart(2, '0')}${labelMinutes}`;
+      countdownString += `${String(seconds).padStart(2, '0')}${labelSeconds}`;
     } else { // dhms format
        if (days > 0) {
-          countdownString += `${days}d `;
+          countdownString += `${days}${labelSpace}${labelDays}${labelSpace}`;
         }
         if (days > 0 || hours > 0) {
-          countdownString += `${hours}h `;
+          countdownString += `${hours}${labelSpace}${labelHours}${labelSpace}`;
         }
         if (days > 0 || hours > 0 || minutes > 0) {
-          countdownString += `${minutes}m `;
+          countdownString += `${minutes}${labelSpace}${labelMinutes}${labelSpace}`;
         }
-        countdownString += `${seconds}s`;
+        countdownString += `${seconds}${labelSpace}${labelSeconds}`;
+        countdownString = countdownString.trim();
     }
 
-
-
     countdownTextSpan.textContent = countdownString;
-    setTimeout(() => updateCountdown(countdownElement), 1000);
+    const timeoutId = setTimeout(() => updateCountdown(countdownElement), 1000);
+    countdownElement.dataset.timeoutId = String(timeoutId);
   }
 
-
-  document.addEventListener('astro:page-load', () => {
+  function initializeCountdowns() {
       const countdownElements = document.querySelectorAll('.countdown');
-      countdownElements.forEach(countdownElement => {
-        updateCountdown(countdownElement as HTMLParagraphElement);
+      countdownElements.forEach(element => {
+        // --- THIS IS THE FIX ---
+        const countdownElement = element as HTMLParagraphElement; // Cast to specific HTMLElement
+        // --- END FIX ---
+
+        // Clear any previous timeout if the element is being re-initialized
+        const existingTimeoutId = parseInt(countdownElement.dataset.timeoutId || '0', 10);
+        if (existingTimeoutId) {
+            clearTimeout(existingTimeoutId);
+            delete countdownElement.dataset.timeoutId; // Clean up dataset property
+        }
+        updateCountdown(countdownElement); // No need to cast again here
       });
-  });
+  }
+
+  document.addEventListener('astro:page-load', initializeCountdowns);
+  // If using Astro View Transitions, also listen for astro:after-swap for MPA-like behavior
+  // document.addEventListener('astro:after-swap', initializeCountdowns);
 </script>

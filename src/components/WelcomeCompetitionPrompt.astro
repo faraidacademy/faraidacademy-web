@@ -33,6 +33,7 @@ const { userName, isParticipant } = Astro.props;
   )
 }
 <script>
+  import { navigate } from 'astro:transitions/client';
   import "material/dialog/dialog";
   import "material/button/filled-button";
   import "material/button/text-button";
@@ -81,7 +82,7 @@ const { userName, isParticipant } = Astro.props;
           if (typeof dialog.close === "function") {
             dialog.close(); // Close the dialog before reloading
           }
-          window.location.reload();
+          navigate(window.location.pathname, { history: 'replace' });
         } catch (err) {
           alert("An unexpected error occurred.");
           (joinBtn as HTMLButtonElement).disabled = false;

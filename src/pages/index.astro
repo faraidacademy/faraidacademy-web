@@ -28,15 +28,7 @@ const isParticipant = !!Astro.locals.is_participant;
           </p>
         </div>
       </div>
-      <div class="main-hadith col">
-        <div class="hadith" dir="rtl">
-          <p>«ألحقوا الفرائض بأهلها»</p>
-        </div>
-        <p class="translation">
-          Assign the prescribed shares [of inheritance] to the ones whom they
-          rightfully belong
-        </p>
-      </div>
+
     </div>
     <CompetitionAnnouncement isLoggedIn={isLoggedIn} isParticipant={isParticipant} />
   </main>
@@ -90,12 +82,6 @@ const isParticipant = !!Astro.locals.is_participant;
   }
 
   @media (min-width: 900px) {
-    body {
-      font-size: 1.5em;
-    }
 
-    .main-hadith {
-      display: flex;
-    }
   }
 </style>

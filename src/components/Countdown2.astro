@@ -1,0 +1,174 @@
+---
+interface Props {
+  targetTime: string;
+  // You could add props for labels if you need them to be configurable, e.g.:
+  // labelDays?: string;
+  // labelHours?: string;
+  // labelMinutes?: string;
+  // labelSeconds?: string;
+}
+
+const { targetTime } = Astro.props;
+// Example with configurable labels:
+// const {
+//   targetTime,
+//   labelDays = "days",
+//   labelHours = "hours",
+//   labelMinutes = "minutes",
+//   labelSeconds = "seconds"
+// } = Astro.props;
+
+const targetDate: Date = new Date(targetTime);
+const targetTimestamp: number = targetDate.getTime();
+
+if (isNaN(targetTimestamp)) {
+  console.error("Invalid targetTime prop:", targetTime);
+}
+---
+
+{ !isNaN(targetTimestamp) && (
+  <div class="countdown-container" data-target={targetTimestamp}>
+    <div class="countdown-block">
+      <span class="countdown-value" data-unit="days">--</span>
+      <span class="countdown-label">{/* labelDays || */ "hari"}</span>
+    </div>
+    <div class="countdown-block">
+      <span class="countdown-value" data-unit="hours">--</span>
+      <span class="countdown-label">{/* labelHours || */ "jam"}</span>
+    </div>
+    <div class="countdown-block">
+      <span class="countdown-value" data-unit="minutes">--</span>
+      <span class="countdown-label">{/* labelMinutes || */ "menit"}</span>
+    </div>
+    <div class="countdown-block">
+      <span class="countdown-value" data-unit="seconds">--</span>
+      <span class="countdown-label">{/* labelSeconds || */ "detik"}</span>
+    </div>
+    <div class="countdown-finished-message" style="display: none;">
+      Countdown finished!
+    </div>
+  </div>
+)}
+
+{ isNaN(targetTimestamp) && (
+  <p class="countdown-error">Invalid date provided for countdown.</p>
+)}
+
+<style>
+  .countdown-container {
+    display: flex;
+    flex-wrap: wrap; /* Allows finished message to wrap */
+    gap: 1em; /* Space between blocks */
+    justify-content: center; /* Center blocks horizontally */
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    text-align: center;
+  }
+  .countdown-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px; /* Adjust as needed for aesthetics */
+    padding: 0.5em;
+  }
+  .countdown-value {
+    font-size: 2.5em; /* Larger font for the number */
+    font-weight: bold;
+    line-height: 1.1;
+    color: var(--md-sys-color-primary);
+    min-height: 1.2em; /* To prevent jump when numbers appear */
+  }
+  .countdown-label {
+    font-size: 0.8em;
+    text-transform: uppercase;
+    color: var(--md-sys-color-on-surface-variant);
+    margin-top: 0.3em;
+  }
+  .countdown-finished-message {
+    width: 100%; /* Takes full width on its own line */
+    margin-top: 1em;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #333;
+  }
+  .countdown-error {
+    color: red;
+    font-style: italic;
+  }
+</style>
+
+<script>
+  function updateCountdownBlocks(countdownElement: HTMLElement) {
+    if (!countdownElement) return;
+
+    const targetTimestamp = parseInt(countdownElement.dataset.target || '0', 10);
+
+    const daysSpan = countdownElement.querySelector('[data-unit="days"]') as HTMLSpanElement | null;
+    const hoursSpan = countdownElement.querySelector('[data-unit="hours"]') as HTMLSpanElement | null;
+    const minutesSpan = countdownElement.querySelector('[data-unit="minutes"]') as HTMLSpanElement | null;
+    const secondsSpan = countdownElement.querySelector('[data-unit="seconds"]') as HTMLSpanElement | null;
+    const finishedMessageDiv = countdownElement.querySelector('.countdown-finished-message') as HTMLDivElement | null;
+
+    if (!daysSpan || !hoursSpan || !minutesSpan || !secondsSpan || !finishedMessageDiv) {
+      console.error("Countdown component's internal elements not found!");
+      return;
+    }
+
+    if (isNaN(targetTimestamp)) {
+      console.error("Invalid targetTimestamp in dataset:", countdownElement.dataset.target);
+      daysSpan.textContent = 'ERR';
+      hoursSpan.textContent = 'ERR';
+      minutesSpan.textContent = 'ERR';
+      secondsSpan.textContent = 'ERR';
+      return;
+    }
+
+    const now: number = new Date().getTime();
+    const timeLeft: number = targetTimestamp - now;
+
+    if (timeLeft <= 0) {
+      daysSpan.textContent = '0';
+      hoursSpan.textContent = '00';
+      minutesSpan.textContent = '00';
+      secondsSpan.textContent = '00';
+      finishedMessageDiv.style.display = 'block';
+      // Stop the recursive setTimeout
+      return;
+    }
+
+    // Ensure finished message is hidden if countdown is active
+    finishedMessageDiv.style.display = 'none';
+
+    const days: number = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+    const hours: number = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes: number = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds: number = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+    daysSpan.textContent = String(days);
+    // Pad hours, minutes, and seconds with a leading zero if they are single digit
+    // The example "12 4 7 8" shows single digits for H, M, S if < 10.
+    // If you prefer "12 04 07 08", use .padStart(2, '0') for hours, minutes, seconds.
+    // For this example, let's match the single-digit style if not large.
+    // However, for consistency, padding is often better. I'll use padding.
+    hoursSpan.textContent = String(hours).padStart(2, '0');
+    minutesSpan.textContent = String(minutes).padStart(2, '0');
+    secondsSpan.textContent = String(seconds).padStart(2, '0');
+
+    setTimeout(() => updateCountdownBlocks(countdownElement), 1000);
+  }
+
+  // Run the script for all countdowns on page load and after view transitions
+  function initCountdowns() {
+    const countdownElements = document.querySelectorAll('.countdown-container');
+    countdownElements.forEach(element => {
+      // Check if already initialized to prevent multiple timeouts on HMR or view transitions
+      if (!(element as HTMLElement).dataset.initialized) {
+        updateCountdownBlocks(element as HTMLElement);
+        (element as HTMLElement).dataset.initialized = 'true';
+      }
+    });
+  }
+
+  document.addEventListener('astro:page-load', initCountdowns);
+  // If you are using View Transitions, you might also want 'astro:after-swap'
+  // document.addEventListener('astro:after-swap', initCountdowns);
+</script>
