@@ -108,7 +108,8 @@ const { showProviderButtons = false } = Astro.props;
 ---
 import { Icon } from "astro-icon/components";
 import Countdown from "./Countdown.astro";
-import LoginWithGoogleButton from './LoginWithGoogleButton.astro';
+import LoginWithGoogleButton from "./LoginWithGoogleButton.astro";
+import Countdown2 from "./Countdown2.astro";
 
 interface Props {
     isLoggedIn: boolean;
@@ -125,35 +126,45 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
     </div>
     <div class="col">
         <p>Pendaftaran ditutup dalam:</p>
-        <Countdown targetTime="2025-06-17T11:00:00Z" />
+        <Countdown2 targetTime="2025-06-17T11:00:00Z" />
     </div>
     {
         isLoggedIn ? (
             isParticipant ? (
-                <md-filled-button href="/competition">VIEW COMPETITION</md-filled-button>
+                <md-filled-button href="/competition">
+                    VIEW COMPETITION
+                </md-filled-button>
             ) : (
-                <md-filled-button id="announcement-join-button">JOIN COMPETITION</md-filled-button>
+                <md-filled-button id="announcement-join-button">
+                    JOIN COMPETITION
+                </md-filled-button>
             )
         ) : (
-            <LoginWithGoogleButton buttonType="filled" buttonText="JOIN" intent="join_competition" />
+            <LoginWithGoogleButton
+                buttonType="filled"
+                buttonText="JOIN"
+                intent="join_competition"
+            />
         )
     }
 </md-outlined-card>
 
 <script>
-    import { navigate } from 'astro:transitions/client';
+    import { navigate } from "astro:transitions/client";
     import "material/button/filled-button";
     import "material/card/outlined-card";
     import "material/card/elevated-card";
     import "material/card/filled-card";
 
-    document.addEventListener('astro:page-load', () => { // Changed from DOMContentLoaded
+    document.addEventListener("astro:page-load", () => {
+        // Changed from DOMContentLoaded
         const closeButton = document.getElementById("close-button");
         const card = document.getElementById("competition-card");
         const joinButton = document.getElementById("announcement-join-button");
         if (closeButton && card) {
             closeButton.addEventListener("click", () => {
-                card.style.display = card.style.display === "none" ? "" : "none";
+                card.style.display =
+                    card.style.display === "none" ? "" : "none";
             });
         }
         if (joinButton) {
@@ -164,7 +175,7 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
                     const response = await fetch("/api/profile", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ is_participant: true })
+                        body: JSON.stringify({ is_participant: true }),
                     });
                     if (!response.ok) {
                         const errorData = await response.json();
@@ -180,27 +191,32 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
             });
         }
     });
-
 </script>
-
+<style is:global>
+    .countdown-container {
+        font-size: 0.5em;
+        gap: 0.5em;
+    }
+</style>
 <style>
-  .card {
-    font-size: 1em;
-    position: relative;
-    padding: 18px;
-    text-align: center;
-    gap: 0.5em;
-    font-weight: 500;
-    max-width: 90%;
-    justify-content: space-between;
-    --_container-shape: 28px;
-    --_container-color: var(--md-sys-color-surface-variant);
-    backdrop-filter: blur(4px);
-}
+    .card {
+        font-size: 1em;
+        position: relative;
+        padding: 18px;
+        text-align: center;
+        gap: 0.5em;
+        font-weight: 500;
+        max-width: 90%;
+        justify-content: space-between;
+        --_container-shape: 28px;
+        --_container-color: var(--md-sys-color-surface-variant);
+        backdrop-filter: blur(4px);
+    }
 
     .main {
+        font-size: 1.1em;
         gap: 0.5em;
-        font-weight: 600;
+        font-weight: bold;
     }
 
     .card > .col p {
@@ -235,6 +251,7 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
         }
     }
 </style>
+
 ```
 ---
 
@@ -481,27 +498,26 @@ if (isNaN(targetTimestamp)) {
     flex-wrap: wrap; /* Allows finished message to wrap */
     gap: 1em; /* Space between blocks */
     justify-content: center; /* Center blocks horizontally */
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-family: 'Open Sans Variable', sans-serif;
     text-align: center;
+    padding:1em;
   }
   .countdown-block {
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-width: 60px; /* Adjust as needed for aesthetics */
-    padding: 0.5em;
   }
   .countdown-value {
     font-size: 2.5em; /* Larger font for the number */
-    font-weight: bold;
+    font-weight:600;
     line-height: 1.1;
-    color: --md-sys-color-on-primary;
+    color: var(--md-sys-color-primary);
     min-height: 1.2em; /* To prevent jump when numbers appear */
   }
   .countdown-label {
     font-size: 0.8em;
     text-transform: uppercase;
-    color: --md-sys-color-surface-variant;
+    color: var(--md-sys-color-on-surface-variant);
     margin-top: 0.3em;
   }
   .countdown-finished-message {
@@ -1548,6 +1564,33 @@ const { userName, isParticipant } = Astro.props;
 ```
 ---
 
+`src/content/guides/competition-guide.md`:
+```
+---
+title: Panduan Kompetisi
+---
+
+**1. Baca dengan Seksama:** Pastikan Anda memahami setiap soal secara menyeluruh sebelum memilih jawaban.
+
+**2. Detail dan Manajemen Waktu:**
+    Kompetisi ini terdiri dari **sekitar 50 soal**.
+    Total waktu pengerjaan adalah **sekitar 1.5 jam (90 menit)**.
+    Atur waktu pengerjaan Anda dengan baik. Informasi mengenai sisa waktu akan ditampilkan selama kompetisi.
+
+**3. Simpan Otomatis:** Jawaban yang Anda pilih untuk setiap soal akan tersimpan secara otomatis saat Anda mengeklik salah satu pilihan. Anda dapat mengubah jawaban Anda kapan saja sebelum waktu berakhir.
+
+**4. Navigasi:** Gunakan tombol panah di bagian bawah setiap halaman soal untuk berpindah antar soal. Anda dapat kembali ke soal sebelumnya untuk meninjau atau mengubah jawaban.
+
+**5. Pengumpulan Jawaban:** Tidak ada tombol "Kirim Semua" di akhir. Ketika Anda sudah menjawab semua soal, walaupun tidak berurutan, jawaban Anda akan dianggap final saat waktu kompetisi berakhir atau jika Anda menyelesaikan semua soal sebelum waktu habis.
+
+**6. Seleksi ke Babak Final:** Peserta dengan skor tertinggi akan lolos ke babak final.
+
+**7. Muraqabah:** Ini adalah kompetisi individual. Harap menjunjung tinggi sportivitas dan kejujuran selama kompetisi berlangsung.
+
+**بارك الله فيكم**
+```
+---
+
 `src/data/links.js`:
 ```
 // src/data/links.js
@@ -2146,17 +2189,10 @@ export const GET: APIRoute = async ({ cookies, redirect }) => {
 ```
 ---
 import Base from "../../layout/Base.astro";
-import Countdown from "../../components/Countdown.astro";
 import { Icon } from "astro-icon/components";
 import Countdown2 from "../../components/Countdown2.astro";
-const indonesianAbbrLabels = {
-  days: "hr", // Or your preferred abbreviation for hari
-  hours: "j",
-  minutes: "m",
-  seconds: "d", // Assuming 'd' for detik
-  finished: "Selesai!",
+import { Content as CompetitionGuideContent, frontmatter as guideFrontmatter } from "../../content/guides/competition-guide.md";
 
-};
 const competitionStartDate = "2025-06-17T11:00:00Z";
 ---
 
@@ -2171,23 +2207,27 @@ const competitionStartDate = "2025-06-17T11:00:00Z";
         <div class="countdown-wrapper">
           <Countdown2 targetTime={competitionStartDate} />
         </div>
-        <p class="start-time-display" data-start-date={competitionStartDate}>
-          Pada: <span class="local-start-time">Memuat waktu lokal...</span>
-        </p>
+
+        <div class="start-time-details" data-start-date={competitionStartDate}>
+          <p class="date-info-line">
+            <Icon name="material-symbols:calendar-month-rounded" size="1.1em" />
+            <span class="local-date-text">Memuat tanggal...</span>
+          </p>
+          <p class="time-info-line">
+            <Icon name="material-symbols:schedule-outline-rounded" size="1.1em" />
+            <span class="local-time-text start-time-clock">Memuat waktu...</span>
+          </p>
+        </div>
       </div>
 
       <div class="actions row">
         <md-outlined-button id="open-guides-dialog">
           <Icon name="material-symbols:help-outline-rounded" slot="icon" />
-          Panduan
+          Info & Panduan
         </md-outlined-button>
 
-        <md-filled-button
-          style="display: none"
-          href="/competition/1"
-          trailing-icon
-        >
-          Start Competition
+        <md-filled-button href="/competition/1" trailing-icon>
+          Mulai
           <Icon name="material-symbols:play-arrow-rounded" slot="icon" />
         </md-filled-button>
       </div>
@@ -2196,58 +2236,29 @@ const competitionStartDate = "2025-06-17T11:00:00Z";
     <md-dialog id="guides-dialog">
       <div slot="headline" class="row dialog-headline">
         <Icon name="material-symbols:menu-book-rounded" size="1.2em" />
-        Competition Guides
+        {guideFrontmatter.title}
       </div>
       <div slot="content" id="guides-content" class="col">
-        <p>
-          <strong>1. Read Carefully:</strong> Ensure you understand each question
-          thoroughly before selecting an answer.
-        </p>
-        <p>
-          <strong>2. Time Management:</strong> Pace yourself. The overall competition
-          time and time per question (if applicable) will be indicated.
-        </p>
-        <p>
-          <strong>3. Auto-Save:</strong> Your selected answer for each question is
-          saved automatically when you click on an option. You can change your answer
-          anytime before the competition ends.
-        </p>
-        <p>
-          <strong>4. Navigation:</strong> Use the arrow buttons at the bottom of
-          each question page to move between questions. You can revisit and change
-          answers on previous questions.
-        </p>
-        <p>
-          <strong>5. Submission:</strong> There is no final "submit all" button.
-          Your last selected answers for all questions are considered final when
-          the time ends or when you complete all questions.
-        </p>
-        <p>
-          <strong>6. 'Null' Option (لا شيء مما سبق):</strong> If you believe none
-          of the provided numerical answers are correct for a calculation question,
-          select the "لا شيء مما سبق" (None of the above) option.
-        </p>
-        <p>
-          <strong>7. Technical Issues:</strong> Ensure you have a stable internet
-          connection. In case of minor disruptions, refresh the page. Your progress
-          should be saved.
-        </p>
-        <p>
-          <strong>8. Fair Play:</strong> This is an individual competition. Please
-          adhere to fair play standards.
-        </p>
-        <p><strong>Good luck!</strong></p>
+        <CompetitionGuideContent />
       </div>
       <div slot="actions">
-        <md-text-button id="close-guides-dialog" value="close"
-          >Close</md-text-button
-        >
+        <md-text-button id="close-guides-dialog" value="close">
+          Tutup
+        </md-text-button>
       </div>
     </md-dialog>
   </main>
 </Base>
-
+<style is:global>
+  .countdown-container{
+    gap:2em;
+  }
+</style>
 <style>
+  [data-icon="material-symbols:play-arrow-rounded"] {
+    color: var(--md-sys-color-on-primary);
+  }
+
   main.col {
     padding-top: 2em;
     padding-bottom: 2em;
@@ -2259,29 +2270,38 @@ const competitionStartDate = "2025-06-17T11:00:00Z";
     font-size: 1.1em;
   }
   .start-info {
-    gap: 0.5em;
+    gap: 0.75em;
     margin-bottom: 1em;
   }
 
-  .start-info p {
-    font-size: 1em;
+ .start-info[data-astro-cid-zptrxzxo]>p[data-astro-cid-zptrxzxo]:first-child {
+    margin-bottom: 0;
+    font-size: 0.8em;
     color: var(--md-sys-color-on-surface-variant);
+}
+
+  .start-time-details {
+    font-size:0.8em;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1em;
+    width: 100%;
+    justify-content: center;
   }
 
-  .countdown-wrapper :global(p.countdown) {
-    font-size: 1.6em !important;
-    font-weight: bold;
-    color: var(--md-sys-color-primary);
-    margin: 0.2em 0;
-  }
-
-  .start-time-display {
+  .date-info-line,
+  .time-info-line {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2em;
     font-size: 0.9em;
-    opacity: 0.8;
+    color: var(--md-sys-color-on-surface-variant);
+    opacity: 0.9;
+    margin: 0;
   }
-  /* You can add specific styles for .start-time-clock if needed */
-  /* e.g., .start-time-display :global(.start-time-clock) { font-weight: bold; } */
-
 
   .actions {
     gap: 1em;
@@ -2306,24 +2326,38 @@ const competitionStartDate = "2025-06-17T11:00:00Z";
     align-items: center;
   }
 
+  /* These styles should now apply to the content rendered from Markdown */
   #guides-dialog div[slot="content"] {
     gap: 0.8em;
     padding-top: 0.5em;
     padding-bottom: 1em;
   }
 
-  #guides-dialog div[slot="content"] p {
+  /*
+    You might need to adjust these selectors slightly if the Markdown
+    output structure is different, but Astro's default Markdown
+    output typically wraps paragraphs in <p> tags.
+  */
+  #guides-dialog div[slot="content"] :global(p) { /* Use :global if styles are scoped */
     text-align: left;
     line-height: 1.6;
     font-size: 0.95em;
     color: var(--md-sys-color-on-surface-variant);
+    margin-block-start: 0; /* Reset default paragraph margins if needed */
+    margin-block-end: 0.8em; /* Or keep your gap for spacing */
   }
-  #guides-dialog div[slot="content"] p strong {
+  #guides-dialog div[slot="content"] :global(p:last-child) {
+    margin-block-end: 0;
+  }
+
+  #guides-dialog div[slot="content"] :global(strong) {
     color: var(--md-sys-color-on-surface);
     font-weight: 600;
   }
 </style>
+
 <script>
+  // Your existing script remains the same
   import "material/dialog/dialog.js";
   import "material/button/outlined-button.js";
   import "material/button/filled-button.js";
@@ -2337,44 +2371,35 @@ const competitionStartDate = "2025-06-17T11:00:00Z";
     returnValue?: string;
   };
 
-  /**
-   * Formats a UTC date string into local date and time parts.
-   * Example output: { datePart: "Selasa, 17 Juni 2025", timePart: "18:00" }
-   */
-  function formatUTCDateToLocalParts(utcDateString: string): 
-    { datePart: string; timePart: string } | 
-    { error: string } 
+  function formatUTCDateToLocalParts(utcDateString: string):
+    { datePart: string; timePart: string } |
+    { error: string }
   {
     const date = new Date(utcDateString);
     if (isNaN(date.getTime())) {
       return { error: "Invalid date" };
     }
 
-    // Format date part: "Selasa, 17 Juni 2025"
     const dateOptions: Intl.DateTimeFormatOptions = {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     };
-    // 'id-ID' for Indonesian locale to get "Selasa", "Juni"
     const datePart = date.toLocaleDateString('id-ID', dateOptions);
 
-    // Format time part: "18:00" (24-hour format)
     const timeOptions: Intl.DateTimeFormatOptions = {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false, // Ensure 24-hour format
+      hour12: false,
     };
-    // 'en-GB' locale is often used to ensure HH:MM format with a colon.
-    // Some locales might use a dot (e.g., 18.00).
-    const timePart = date.toLocaleTimeString('en-GB', timeOptions);
+    const timePart = date.toLocaleTimeString('en-GB', timeOptions); // Or 'id-ID' if you prefer localized time format for display
 
     return { datePart, timePart };
   }
 
   document.addEventListener("astro:page-load", () => {
-    // Dialog logic (unchanged)
+
     const guidesDialog = document.getElementById(
       "guides-dialog",
     ) as DialogLikeElement | null;
@@ -2401,23 +2426,34 @@ const competitionStartDate = "2025-06-17T11:00:00Z";
       });
     }
 
-    // Updated start time display logic
-    const startTimeDisplayElement = document.querySelector<HTMLElement>(".start-time-display");
-    if (startTimeDisplayElement) {
-      const localTimeSpan = startTimeDisplayElement.querySelector<HTMLSpanElement>(".local-start-time");
-      const utcDateString = startTimeDisplayElement.dataset.startDate;
+    const startTimeDetailsElement = document.querySelector<HTMLElement>(".start-time-details");
 
-      if (localTimeSpan && utcDateString) {
-        const result = formatUTCDateToLocalParts(utcDateString);
-        if ('error' in result) {
-          localTimeSpan.textContent = result.error;
+    if (startTimeDetailsElement) {
+      const dateTextSpan = startTimeDetailsElement.querySelector<HTMLSpanElement>(".local-date-text");
+      const timeTextSpan = startTimeDetailsElement.querySelector<HTMLSpanElement>(".local-time-text.start-time-clock");
+      const utcDateString = startTimeDetailsElement.dataset.startDate;
+
+      if (dateTextSpan && timeTextSpan) {
+        if (utcDateString) {
+          const result = formatUTCDateToLocalParts(utcDateString);
+          if ('error' in result) {
+            dateTextSpan.textContent = result.error;
+            timeTextSpan.textContent = "Kesalahan waktu";
+          } else {
+            dateTextSpan.textContent = result.datePart;
+            timeTextSpan.textContent = result.timePart;
+          }
         } else {
-          // Set the innerHTML to create the desired structure
-          localTimeSpan.innerHTML = `${result.datePart} <span class="start-time-clock">${result.timePart}</span>`;
+          dateTextSpan.textContent = "Tanggal kompetisi tidak tersedia.";
+          timeTextSpan.textContent = "";
+          console.error("Attribute data-start-date tidak ditemukan pada .start-time-details");
         }
-      } else if (localTimeSpan) {
-        localTimeSpan.textContent = "Tanggal tidak tersedia";
-        console.error("Attribute data-start-date tidak ditemukan atau span .local-start-time tidak ada.");
+      } else {
+        if (!dateTextSpan) console.error("Elemen .local-date-text tidak ditemukan dalam .start-time-details.");
+        if (!timeTextSpan) console.error("Elemen .local-time-text.start-time-clock tidak ditemukan dalam .start-time-details.");
+        // Avoid overwriting the whole container if only one part is missing, or handle more gracefully
+        // For example, if startTimeDetailsElement has other important children.
+        // startTimeDetailsElement.textContent = "Kesalahan dalam menampilkan waktu kompetisi.";
       }
     }
   });
@@ -2530,7 +2566,7 @@ const formattedMoney = formatNumber(question.money);
 
 <Base title={`Question ${questionId}`}>
   <md-filled-card class="countdown">
-    <Countdown targetTime="March 19, 2025 13:15:00 GMT+0300" format="colon" />
+    <Countdown targetTime="2025-06-17T11:00:00Z" format="colon" />
   </md-filled-card>
   <style>
     .countdown {
@@ -2724,7 +2760,9 @@ const formattedMoney = formatNumber(question.money);
   section {
     width: 100%;
   }
-
+.question-area{
+  width:100%;
+}
   .question {
     gap: 1em;
     width: 100%;

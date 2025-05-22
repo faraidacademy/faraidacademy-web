@@ -1,7 +1,8 @@
 ---
 import { Icon } from "astro-icon/components";
 import Countdown from "./Countdown.astro";
-import LoginWithGoogleButton from './LoginWithGoogleButton.astro';
+import LoginWithGoogleButton from "./LoginWithGoogleButton.astro";
+import Countdown2 from "./Countdown2.astro";
 
 interface Props {
     isLoggedIn: boolean;
@@ -13,40 +14,50 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
 
 <md-outlined-card class="card col" id="competition-card">
     <div class="main col">
-        <Icon name="trophy2" size="3em" />
+        <Icon name="trophy2" size="2.5em" />&nbsp;
         Faraid Competition 2025
     </div>
     <div class="col">
         <p>Pendaftaran ditutup dalam:</p>
-        <Countdown targetTime="2025-06-17T11:00:00Z" />
+        <Countdown2 targetTime="2025-06-17T11:00:00Z" />
     </div>
     {
         isLoggedIn ? (
             isParticipant ? (
-                <md-filled-button href="/competition">VIEW COMPETITION</md-filled-button>
+                <md-filled-button href="/competition">
+                    VIEW COMPETITION
+                </md-filled-button>
             ) : (
-                <md-filled-button id="announcement-join-button">JOIN COMPETITION</md-filled-button>
+                <md-filled-button id="announcement-join-button">
+                    JOIN COMPETITION
+                </md-filled-button>
             )
         ) : (
-            <LoginWithGoogleButton buttonType="filled" buttonText="JOIN" intent="join_competition" />
+            <LoginWithGoogleButton
+                buttonType="filled"
+                buttonText="JOIN"
+                intent="join_competition"
+            />
         )
     }
 </md-outlined-card>
 
 <script>
-    import { navigate } from 'astro:transitions/client';
+    import { navigate } from "astro:transitions/client";
     import "material/button/filled-button";
     import "material/card/outlined-card";
     import "material/card/elevated-card";
     import "material/card/filled-card";
 
-    document.addEventListener('astro:page-load', () => { // Changed from DOMContentLoaded
+    document.addEventListener("astro:page-load", () => {
+        // Changed from DOMContentLoaded
         const closeButton = document.getElementById("close-button");
         const card = document.getElementById("competition-card");
         const joinButton = document.getElementById("announcement-join-button");
         if (closeButton && card) {
             closeButton.addEventListener("click", () => {
-                card.style.display = card.style.display === "none" ? "" : "none";
+                card.style.display =
+                    card.style.display === "none" ? "" : "none";
             });
         }
         if (joinButton) {
@@ -57,7 +68,7 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
                     const response = await fetch("/api/profile", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ is_participant: true })
+                        body: JSON.stringify({ is_participant: true }),
                     });
                     if (!response.ok) {
                         const errorData = await response.json();
@@ -73,27 +84,32 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
             });
         }
     });
-
 </script>
-
+<style is:global>
+    .countdown-container {
+        font-size: 0.5em;
+        gap: 0.5em;
+    }
+</style>
 <style>
-  .card {
-    font-size: 1em;
-    position: relative;
-    padding: 18px;
-    text-align: center;
-    gap: 0.5em;
-    font-weight: 500;
-    max-width: 90%;
-    justify-content: space-between;
-    --_container-shape: 28px;
-    --_container-color: var(--md-sys-color-surface-variant);
-    backdrop-filter: blur(4px);
-}
+    .card {
+        font-size: 1em;
+        position: relative;
+        padding: 18px;
+        text-align: center;
+        gap: 0.5em;
+        font-weight: 500;
+        max-width: 90%;
+        justify-content: space-between;
+        --_container-shape: 28px;
+        --_container-color: var(--md-sys-color-surface-variant);
+        backdrop-filter: blur(4px);
+    }
 
     .main {
+        font-size: 1.2em;
         gap: 0.5em;
-        font-weight: 600;
+        font-weight: bold;
     }
 
     .card > .col p {
@@ -115,12 +131,16 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
     }
 
     @media (min-width: 600px) {
-        .card {
-            font-size: 0.7em;
-            flex-direction: row;
-            align-items: center;
-            gap: 1em;
-        }
+         .card {
+      font-size: 0.7em;
+      flex-direction: row;
+      align-items: center;
+      gap: 1em;
+      width: 60vw;
+      position: fixed;
+      bottom: 19vh;
+      padding: 1em 2em;
+    }
 
         .main {
             flex-direction: row;
