@@ -121,7 +121,7 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
 
 <md-outlined-card class="card col" id="competition-card">
     <div class="main col">
-        <Icon name="trophy2" size="3em" />
+        <Icon name="trophy2" size="2.5em" />&nbsp;
         Faraid Competition 2025
     </div>
     <div class="col">
@@ -214,7 +214,7 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
     }
 
     .main {
-        font-size: 1.1em;
+        font-size: 1.2em;
         gap: 0.5em;
         font-weight: bold;
     }
@@ -238,12 +238,16 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
     }
 
     @media (min-width: 600px) {
-        .card {
-            font-size: 0.7em;
-            flex-direction: row;
-            align-items: center;
-            gap: 1em;
-        }
+         .card {
+      font-size: 0.7em;
+      flex-direction: row;
+      align-items: center;
+      gap: 1em;
+      width: 60vw;
+      position: fixed;
+      bottom: 19vh;
+      padding: 1em 2em;
+    }
 
         .main {
             flex-direction: row;
@@ -874,11 +878,11 @@ const {
 ---
 import "@fontsource-variable/eb-garamond";
 import { Icon } from "astro-icon/components";
-import { Image } from "astro:assets";
 import ThemeIcon from "./ThemeIcon.astro";
 import Navbar from "./Navbar.astro";
 import NavStrip from "./NavStrip.astro";
 import LoginWithGoogleButton from './LoginWithGoogleButton.astro';
+import UserAvatar from './UserAvatar.astro'; // Import the new component
 
 interface Props {
     isLoggedIn: boolean;
@@ -903,13 +907,11 @@ const { avatar_url, name } = Astro.locals;
             isLoggedIn ? (
                 avatar_url ? (
                     <a href="/dashboard">
-                        <Image
-                            class="avatar"
+                        <UserAvatar
                             src={avatar_url}
                             alt={name ? `${name}'s avatar` : "User Avatar"}
                             width={32}
                             height={32}
-                            format="webp"
                         />
                     </a>
                 ) : (
@@ -969,11 +971,6 @@ const { avatar_url, name } = Astro.locals;
         gap: 1em;
 		display: flex;
         font-size: 0.8em;
-    }
-    .avatar {
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid var(--md-sys-color-outline-variant);
     }
 
     .button {
@@ -1167,7 +1164,8 @@ import { links } from "../data/links";
 ```
 ---
 import { Icon } from "astro-icon/components";
-import { Image } from "astro:assets";
+import UserAvatar from './UserAvatar.astro'; // Import the new component
+
 const {
   email,
   name,
@@ -1197,8 +1195,7 @@ function formatDate(dateString: string | undefined) {
   <div class="main col">
     {
       avatar_url && (
-        <Image
-          class="avatar"
+        <UserAvatar
           src={avatar_url}
           alt={name ? `${name}'s avatar` : "User Avatar"}
           width={64}
@@ -1293,10 +1290,8 @@ function formatDate(dateString: string | undefined) {
     gap: 0.5em;
   }
 
-  .avatar {
-    border-radius: 50%;
-    border: 2px solid var(--md-sys-color-outline-variant);
-  }
+  /* Removed .avatar style as it's now in UserAvatar.astro */
+
   md-text-button {
     font-family: "Open Sans Variable", sans-serif;
   }
@@ -1363,7 +1358,6 @@ function formatDate(dateString: string | undefined) {
     }
   });
 </script>
-
 ```
 ---
 
@@ -1447,6 +1441,43 @@ import { Icon } from "astro-icon/components";
 
   document.getElementById("themeToggle")?.addEventListener("click", handleToggleClick);});
 </script>
+```
+---
+
+`src/components/UserAvatar.astro`:
+```
+---
+// src/components/UserAvatar.astro
+import { Image } from "astro:assets";
+
+interface Props {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  class?: string; // Allow passing additional classes
+}
+
+const { src, alt, width, height, class: className } = Astro.props;
+---
+
+<Image
+  class:list={["avatar-component", className]}
+  src={src}
+  alt={alt}
+  width={width}
+  height={height}
+  format="webp"
+  decoding="async"
+/>
+
+<style>
+  .avatar-component {
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--md-sys-color-outline-variant);
+  }
+</style>
 ```
 ---
 

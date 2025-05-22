@@ -1,6 +1,7 @@
 ---
 import { Icon } from "astro-icon/components";
-import { Image } from "astro:assets";
+import UserAvatar from './UserAvatar.astro'; // Import the new component
+
 const {
   email,
   name,
@@ -30,8 +31,7 @@ function formatDate(dateString: string | undefined) {
   <div class="main col">
     {
       avatar_url && (
-        <Image
-          class="avatar"
+        <UserAvatar
           src={avatar_url}
           alt={name ? `${name}'s avatar` : "User Avatar"}
           width={64}
@@ -126,10 +126,8 @@ function formatDate(dateString: string | undefined) {
     gap: 0.5em;
   }
 
-  .avatar {
-    border-radius: 50%;
-    border: 2px solid var(--md-sys-color-outline-variant);
-  }
+  /* Removed .avatar style as it's now in UserAvatar.astro */
+
   md-text-button {
     font-family: "Open Sans Variable", sans-serif;
   }

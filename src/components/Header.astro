@@ -1,11 +1,11 @@
 ---
 import "@fontsource-variable/eb-garamond";
 import { Icon } from "astro-icon/components";
-import { Image } from "astro:assets";
 import ThemeIcon from "./ThemeIcon.astro";
 import Navbar from "./Navbar.astro";
 import NavStrip from "./NavStrip.astro";
 import LoginWithGoogleButton from './LoginWithGoogleButton.astro';
+import UserAvatar from './UserAvatar.astro'; // Import the new component
 
 interface Props {
     isLoggedIn: boolean;
@@ -30,13 +30,11 @@ const { avatar_url, name } = Astro.locals;
             isLoggedIn ? (
                 avatar_url ? (
                     <a href="/dashboard">
-                        <Image
-                            class="avatar"
+                        <UserAvatar
                             src={avatar_url}
                             alt={name ? `${name}'s avatar` : "User Avatar"}
                             width={32}
                             height={32}
-                            format="webp"
                         />
                     </a>
                 ) : (
@@ -96,11 +94,6 @@ const { avatar_url, name } = Astro.locals;
         gap: 1em;
 		display: flex;
         font-size: 0.8em;
-    }
-    .avatar {
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid var(--md-sys-color-outline-variant);
     }
 
     .button {

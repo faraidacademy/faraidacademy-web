@@ -1,0 +1,81 @@
+---
+// src/components/UserAvatar.astro
+import { Image } from "astro:assets";
+
+interface Props {
+  src: string | undefined | null; // Allow src to be undefined or null
+  alt: string;
+  width: number;
+  height: number;
+  class?: string; // Allow passing additional classes
+}
+
+const { src: originalSrc, alt, width, height, class: className } = Astro.props;
+const defaultAvatarPath = "/images/default-avatar.png"; // Path relative to your `public` folder
+
+let effectiveSrc = defaultAvatarPath; // Default to the fallback image
+
+if (originalSrc && typeof originalSrc === 'string' && originalSrc.trim() !== '') {
+  if (originalSrc.startsWith("https://lh3.googleusercontent.com")) {
+    let isGoogleUrlAccessible = false;
+    try {
+      // Set a timeout for the check to prevent long delays during server render
+      const controller = new AbortController();
+      const timeoutDuration = 3000; // 3 seconds
+      const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
+
+      // Use a HEAD request to check accessibility without downloading the full image.
+      // This is lighter than a GET request.
+      const response = await fetch(originalSrc, {
+        method: 'HEAD',
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId); // Clear the timeout if fetch completes
+
+      if (response.ok) {
+        isGoogleUrlAccessible = true;
+      } else {
+        console.warn(`UserAvatar: HEAD request for Google avatar ${originalSrc} failed with status ${response.status}. Using fallback.`);
+      }
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.warn(`UserAvatar: HEAD request for Google avatar ${originalSrc} timed out. Using fallback.`);
+      } else {
+        console.warn(`UserAvatar: Error during HEAD request for Google avatar ${originalSrc}: ${error.message}. Using fallback.`);
+      }
+      // isGoogleUrlAccessible remains false
+    }
+
+    if (isGoogleUrlAccessible) {
+      effectiveSrc = originalSrc;
+    }
+    // If not accessible, effectiveSrc remains defaultAvatarPath
+  } else {
+    // If originalSrc is provided but not a Google URL, use it directly.
+    // Astro's <Image> component will handle it (and error if it's an unauthorized remote domain).
+    effectiveSrc = originalSrc;
+  }
+}
+// If originalSrc was null, undefined, or an empty string, effectiveSrc remains defaultAvatarPath.
+
+---
+
+<Image
+  class:list={["avatar-component", className]}
+  src={effectiveSrc}
+  alt={alt}
+  width={width}
+  height={height}
+  format="webp"
+  quality={effectiveSrc === defaultAvatarPath ? 90 : 75} 
+  loading="lazy"
+/>
+
+<style>
+  .avatar-component {
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--md-sys-color-outline-variant);
+  }
+</style>
