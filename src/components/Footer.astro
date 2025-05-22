@@ -24,7 +24,13 @@ const socialMedia = [
             ))
         }
     </div>
-    <div class="copy">&copy; 2025, Faraid Academy. All rights reserved.</div>
+    
+    <div class="copy">© 2025, Faraid Academy. All rights reserved.</div>
+    <div class="legal-links row">
+        <a href="/terms">Terms of Service</a>
+        <span>•</span>
+        <a href="/privacy">Privacy Policy</a>
+    </div>
 </footer>
 
 <style>
@@ -33,6 +39,14 @@ const socialMedia = [
         bottom: 0;
         padding: 0.5em;
         opacity: 0.5;
+        /* Ensure footer spans width if not already */
+        width: 100%;
+        box-sizing: border-box;
+        display: flex; /* To align items if needed */
+        flex-direction: column; /* Stack items vertically */
+        align-items: center; /* Center items horizontally */
+        text-align: center; /* Center text */
+        gap: 0.1em; /* Add some gap between elements */
     }
     .icons {
         display: flex;
@@ -45,8 +59,22 @@ const socialMedia = [
         display: inline-block;
     }
     .icons a:hover {
-        color: #007bff;
+        color: #007bff; /* Or your theme's link hover color */
         transform: scale(1.1);
+    }
+
+    .legal-links { /* Style for the new legal links container */
+        font-size: 0.3em; /* Adjust as needed */
+        gap: 0.5em; /* Space between links and separator */
+    }
+
+    .legal-links a {
+        color: inherit; /* Inherit color from footer */
+        text-decoration: underline; /* Common for legal links */
+    }
+
+    .legal-links a:hover {
+        text-decoration: none;
     }
 
     .copy{
