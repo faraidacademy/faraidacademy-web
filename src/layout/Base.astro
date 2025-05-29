@@ -29,22 +29,7 @@ import Footer from "../components/Footer.astro";
   </head>
   <body>
     <Header isLoggedIn={isLoggedIn} />
-    <main class="main-content">
-      <slot />
-    </main>
+    <slot />
     <Footer />
   </body>
 </html>
-
-<style is:global>
-body {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-.main-content {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-}
-</style>
