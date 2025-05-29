@@ -24,10 +24,11 @@ import Footer from "../components/Footer.astro";
   <head>
     <meta charset="utf-8" />
     <title>{title}</title>
+    <link rel="icon" type="image/x-icon" href="src/icons/Logo.svg">
     <ClientRouter />
     <meta name="viewport" content="width=device-width" />
   </head>
-  <body>
+  <body class="col">
     <Header isLoggedIn={isLoggedIn} />
     <slot />
     <Footer />

@@ -10,17 +10,22 @@ interface Props {
 
 const { src: originalSrc, alt, width, height, class: className } = Astro.props;
 const defaultAvatarPath = "/images/default-avatar.png";
-const effectiveSrc = originalSrc && typeof originalSrc === 'string' && originalSrc.trim() !== '' ? originalSrc : defaultAvatarPath;
+
+// This logic determines the initial src attribute value
+const effectiveSrc =
+  originalSrc && typeof originalSrc === "string" && originalSrc.trim() !== ""
+    ? originalSrc
+    : defaultAvatarPath;
 ---
 
 <img
-  class={['avatar-component', className].filter(Boolean).join(' ')}
+  class={["avatar-component", className].filter(Boolean).join(" ")}
   src={effectiveSrc}
   alt={alt}
   width={width}
   height={height}
   loading="lazy"
-  onerror="this.onerror=null;this.src='${defaultAvatarPath}';"
+  onerror={`this.onerror=null;this.src='${defaultAvatarPath}'; console.warn('Avatar image from ${effectiveSrc.replace(/'/g, "\\'")} failed to load. Switched to default.');`}
 />
 
 <style>

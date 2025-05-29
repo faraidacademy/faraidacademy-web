@@ -17,12 +17,16 @@ EXCLUDE_DIRS = {
     ".astro",
     ".netlify",
     ".vscode",
+    "playwright-report",
+    "tests-examples",
+    "test-results",
     "icons",
     "images",
     "styles",
     "node_modules",
     ".git",
     "public",
+    "src/tests",
 }
 
 EXCLUDE_PATHS = {

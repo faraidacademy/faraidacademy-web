@@ -6,12 +6,13 @@
 }
 
 body {
+    min-height: 100vh;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     font-family: "Open Sans Variable", sans-serif;
     font-size: 1rem;
     color: var(--md-sys-color-on-background);
-    background-image: url('../images/b1.webp');
+    background-image: url('/src/images/b1.webp');
     background-size: cover;
     background-position: center;
     display: flex;
@@ -19,6 +20,7 @@ body {
     padding: 1em;
     position: relative;
     transition: background-color 0.3s ease, color 0.3s ease;
+    justify-content: center;
 }
 
 body::before {
