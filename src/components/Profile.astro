@@ -147,6 +147,7 @@ function formatDate(dateString: string | undefined) {
 </style>
 
 <script>
+  import { joinCompetition } from "../lib/joinCompetition.js";
   import { navigate } from "astro:transitions/client";
   import "material/button/text-button";
   import "material/button/filled-button";
@@ -170,26 +171,9 @@ function formatDate(dateString: string | undefined) {
       "join-competition-profile-button",
     );
     if (joinButton) {
-      joinButton.addEventListener("click", async (e) => {
+      joinButton.addEventListener("click", (e) => {
         e.preventDefault();
-        (joinButton as HTMLButtonElement).disabled = true;
-        try {
-          const response = await fetch("/api/profile", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ is_participant: true }),
-          });
-          if (!response.ok) {
-            const errorData = await response.json();
-            alert(errorData.error || "Failed to join competition");
-            (joinButton as HTMLButtonElement).disabled = false;
-            return;
-          }
-          navigate(window.location.pathname, { history: "replace" });
-        } catch (err) {
-          alert("An unexpected error occurred.");
-          (joinButton as HTMLButtonElement).disabled = false;
-        }
+        joinCompetition({ button: joinButton });
       });
     }
   });

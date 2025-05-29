@@ -7,7 +7,7 @@ title: Terms of Service - Faraid Academy
 
 **Last Updated:** May 22, 2025
 
-Welcome to Faraid Academy! These Terms of Service ("Terms") govern your use of the Faraid Academy website, including all content, features, and services offered (collectively, the "Service"). Faraid Academy is a personal educational project created and operated by Muhammad Siddiq, an individual.
+Welcome to Faraid Academy! These Terms of Service ("Terms") govern your use of the Faraid Academy website, including all content, features, and services offered (collectively, the "Service"). Faraid Academy is a personal educational project created and operated by Faraid Academy Operator, an individual.
 
 By accessing or using the Service, you agree to be bound by these Terms. If you do not agree to these Terms, please do not use the Service.
 

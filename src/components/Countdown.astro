@@ -21,31 +21,32 @@ if (isNaN(targetTimestamp)) {
   console.error("Invalid targetTime prop:", targetTime);
 }
 
-// Define default labels and merge with provided ones
+// Refactored for clarity: label/colon logic is now more readable and commented
 const defaultLabels = {
-  days: format === "colon" ? ":" : "d", // Colon format doesn't use full labels for days
-  hours: format === "colon" ? ":" : "h", // Colon format doesn't use full labels for hours
-  minutes: format === "colon" ? ":" : "m",// Colon format uses colon as separator
+  days: format === "colon" ? ":" : "d", // Colon format uses ':' as separator
+  hours: format === "colon" ? ":" : "h",
+  minutes: format === "colon" ? ":" : "m",
   seconds: format === "colon" ? "" : "s",  // Colon format, seconds has no trailing unit/separator
   finished: "Countdown finished!",
-  space: " ", // Default space between number and unit
+  space: " ",
 };
 
+// Merge provided labels with defaults
 const currentLabels = {
-  days: labels.days !== undefined ? labels.days : defaultLabels.days,
-  hours: labels.hours !== undefined ? labels.hours : defaultLabels.hours,
-  minutes: labels.minutes !== undefined ? labels.minutes : defaultLabels.minutes,
-  seconds: labels.seconds !== undefined ? labels.seconds : defaultLabels.seconds,
-  finished: labels.finished !== undefined ? labels.finished : defaultLabels.finished,
-  space: labels.space !== undefined ? labels.space : defaultLabels.space,
+  days: labels.days ?? defaultLabels.days,
+  hours: labels.hours ?? defaultLabels.hours,
+  minutes: labels.minutes ?? defaultLabels.minutes,
+  seconds: labels.seconds ?? defaultLabels.seconds,
+  finished: labels.finished ?? defaultLabels.finished,
+  space: labels.space ?? defaultLabels.space,
 };
 
-// For colon format, ensure separators are colons if not explicitly overridden for dhms context
+// Colon format: always use ':' as separator unless overridden
 const colonSeparators = {
-    days: labels.days !== undefined && format === "colon" ? labels.days : (format === "colon" ? ":" : currentLabels.days),
-    hours: labels.hours !== undefined && format === "colon" ? labels.hours : (format === "colon" ? ":" : currentLabels.hours),
-    minutes: labels.minutes !== undefined && format === "colon" ? labels.minutes : (format === "colon" ? ":" : currentLabels.minutes),
-    seconds: labels.seconds !== undefined && format === "colon" ? labels.seconds : (format === "colon" ? "" : currentLabels.seconds), // No separator after seconds in colon
+  days: format === "colon" ? (labels.days ?? ":") : currentLabels.days,
+  hours: format === "colon" ? (labels.hours ?? ":") : currentLabels.hours,
+  minutes: format === "colon" ? (labels.minutes ?? ":") : currentLabels.minutes,
+  seconds: format === "colon" ? (labels.seconds ?? "") : currentLabels.seconds,
 };
 
 

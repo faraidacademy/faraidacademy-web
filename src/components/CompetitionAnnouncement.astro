@@ -43,44 +43,20 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
 </md-outlined-card>
 
 <script>
-    import { navigate } from "astro:transitions/client";
+    import { joinCompetition } from "../lib/joinCompetition.js";
     import "material/button/filled-button";
     import "material/card/outlined-card";
     import "material/card/elevated-card";
     import "material/card/filled-card";
 
     document.addEventListener("astro:page-load", () => {
-        // Changed from DOMContentLoaded
-        const closeButton = document.getElementById("close-button");
-        const card = document.getElementById("competition-card");
         const joinButton = document.getElementById("announcement-join-button");
-        if (closeButton && card) {
-            closeButton.addEventListener("click", () => {
-                card.style.display =
-                    card.style.display === "none" ? "" : "none";
-            });
-        }
         if (joinButton) {
-            joinButton.addEventListener("click", async (e) => {
+            joinButton.addEventListener("click", (e) => {
                 e.preventDefault();
-                (joinButton as HTMLButtonElement).disabled = true;
-                try {
-                    const response = await fetch("/api/profile", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ is_participant: true }),
-                    });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        alert(errorData.error || "Failed to join competition");
-                        (joinButton as HTMLButtonElement).disabled = false;
-                        return;
-                    }
-                    navigate("/competition");
-                } catch (err) {
-                    alert("An unexpected error occurred.");
-                    (joinButton as HTMLButtonElement).disabled = false;
-                }
+                joinCompetition({ button: joinButton, redirect: null }); // Fix: use null instead of string
+                // After join, navigate manually if needed
+                window.location.href = "/competition";
             });
         }
     });
@@ -114,19 +90,6 @@ const { isLoggedIn, isParticipant = false } = Astro.props;
 
     .card > .col p {
         font-size: 0.5em;
-        opacity: 0.5;
-    }
-
-    .close-button {
-        position: absolute;
-        top: 0.7em;
-        right: 0.7em;
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 0;
-        z-index: 10;
-        color: var(--md-sys-color-on-surface-variant);
         opacity: 0.5;
     }
 
