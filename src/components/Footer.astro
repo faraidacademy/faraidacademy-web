@@ -33,26 +33,32 @@ const socialMedia = [
     </div>
 </footer>
 
+/* In src/components/Footer.astro */
 <style>
     footer {
-    padding: 0.5em;
-    opacity: 0.5;
-    width: 100%;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 0.1em;
-    position: fixed;
-    bottom: 0;
-}
+        padding: 0.5em;
+        /* opacity: 0.5;  <--- Consider removing or increasing this, e.g., opacity: 0.8; or remove for full visibility */
+        /* OR, if you want the footer slightly transparent but text clear: */
+        /* background-color: rgba(var(--your-footer-bg-color-rgb), 0.5); /* Example if you had a background */
+        /* color: var(--md-sys-color-on-surface); /* Ensure text color has good contrast */
+        width: 100%;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 0.1em; /* This is very small, maybe increase to 0.3em or 0.5em */
+        position: fixed;
+        bottom: 0;
+        /* Ensure the footer doesn't overlay content in a way that hides the link initially */
+    }
+
     .icons {
         display: flex;
-        gap: 0.5em;
+        gap: 0.5em; /* Consider increasing if icons are too close */
     }
     .icons a {
-        color: inherit;
+        color: inherit; /* This will be affected by footer's opacity */
         text-decoration: none;
         transition: color 0.2s ease;
         display: inline-block;
@@ -62,14 +68,18 @@ const socialMedia = [
         transform: scale(1.1);
     }
 
-    .legal-links { /* Style for the new legal links container */
-        font-size: 0.3em; /* Adjust as needed */
-        gap: 0.5em; /* Space between links and separator */
+    .legal-links {
+        font-size: 0.8em; /* <--- INCREASED: e.g., to 0.8em of footer's font, or 12px, 14px */
+        /* Alternatively, use an absolute value: font-size: 12px; */
+        gap: 0.5em;
     }
 
     .legal-links a {
-        color: inherit; /* Inherit color from footer */
-        text-decoration: underline; /* Common for legal links */
+        color: inherit; /* This will be affected by footer's opacity. Ensure high contrast. */
+        /* If footer has opacity, you might need to set a more opaque color here, */
+        /* but it's better to handle opacity on the footer's background. */
+        /* color: var(--md-sys-color-primary); /* Or a distinct link color */
+        text-decoration: underline;
     }
 
     .legal-links a:hover {
@@ -77,6 +87,6 @@ const socialMedia = [
     }
 
     .copy{
-        font-size:0.5em;
+        font-size: 0.7em; /* <--- Slightly increased for better readability */
     }
 </style>

@@ -2,28 +2,25 @@
 
 `astro.config.mjs`:
 ```
+// astro.config.mjs
 import { defineConfig } from 'astro/config';
 import netlify from '@astrojs/netlify';
-
 import sitemap from '@astrojs/sitemap';
-
 import icon from 'astro-icon';
 
 export default defineConfig({
-  image: {
-    domains: ["googleusercontent.com"],
-  },
   output: 'server',
-
   adapter: netlify({
     edgeMiddleware: false,
   }),
-
-  integrations: [sitemap(), icon({
-    include: {
-      "material-symbols": ["*"],
-    },
-  }),],
+  integrations: [
+    sitemap(),
+    icon({
+      include: {
+        "material-symbols": ["*"],
+      },
+    }),
+  ],
 });
 ```
 ---
@@ -801,20 +798,18 @@ const socialMedia = [
 
 <style>
     footer {
-        /* Remove absolute positioning for sticky footer */
-        /* position: absolute; */
-        /* bottom: 0; */
-        padding: 0.5em;
-        opacity: 0.5;
-        /* Ensure footer spans width if not already */
-        width: 100%;
-        box-sizing: border-box;
-        display: flex; /* To align items if needed */
-        flex-direction: column; /* Stack items vertically */
-        align-items: center; /* Center items horizontally */
-        text-align: center; /* Center text */
-        gap: 0.1em; /* Add some gap between elements */
-    }
+    padding: 0.5em;
+    opacity: 0.5;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.1em;
+    position: fixed;
+    bottom: 0;
+}
     .icons {
         display: flex;
         gap: 0.5em;
@@ -905,11 +900,11 @@ const {
             <div class="gender row">
                 <div class="row">
                     <md-radio id="male-radio" name="gender" value="male" checked={userGender === 'male'}></md-radio>
-                    <label for="male-radio">Male</label>
+                    <label for="male-radio">Laki-laki</label>
                 </div>
                 <div class="row">
                     <md-radio id="female-radio" name="gender" value="female" checked={userGender === 'female'}></md-radio>
-                    <label for="female-radio">Female</label>
+                    <label for="female-radio">Perempuan</label>
                 </div>
             </div>
 <md-divider></md-divider>
@@ -1620,17 +1615,22 @@ interface Props {
 
 const { src: originalSrc, alt, width, height, class: className } = Astro.props;
 const defaultAvatarPath = "/images/default-avatar.png";
-const effectiveSrc = originalSrc && typeof originalSrc === 'string' && originalSrc.trim() !== '' ? originalSrc : defaultAvatarPath;
+
+// This logic determines the initial src attribute value
+const effectiveSrc =
+  originalSrc && typeof originalSrc === "string" && originalSrc.trim() !== ""
+    ? originalSrc
+    : defaultAvatarPath;
 ---
 
 <img
-  class={['avatar-component', className].filter(Boolean).join(' ')}
+  class={["avatar-component", className].filter(Boolean).join(" ")}
   src={effectiveSrc}
   alt={alt}
   width={width}
   height={height}
   loading="lazy"
-  onerror="this.onerror=null;this.src='${defaultAvatarPath}';"
+  onerror={`this.onerror=null;this.src='${defaultAvatarPath}'; console.warn('Avatar image from ${effectiveSrc.replace(/'/g, "\\'")} failed to load. Switched to default.');`}
 />
 
 <style>
@@ -1640,6 +1640,7 @@ const effectiveSrc = originalSrc && typeof originalSrc === 'string' && originalS
     border: 2px solid var(--md-sys-color-outline-variant);
   }
 </style>
+
 ```
 ---
 
@@ -1919,10 +1920,11 @@ import Footer from "../components/Footer.astro";
   <head>
     <meta charset="utf-8" />
     <title>{title}</title>
+    <link rel="icon" type="image/x-icon" href="src/icons/Logo.svg">
     <ClientRouter />
     <meta name="viewport" content="width=device-width" />
   </head>
-  <body>
+  <body class="col">
     <Header isLoggedIn={isLoggedIn} />
     <slot />
     <Footer />
