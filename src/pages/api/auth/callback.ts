@@ -4,7 +4,7 @@ import { supabase } from "../../../lib/supabase";
 
 export const GET: APIRoute = async ({ url, cookies, redirect }) => {
   const authCode = url.searchParams.get("code");
-  const intent = url.searchParams.get("intent"); // intent from URL
+  // intent handling has been removed to require explicit user consent (join action)
 
   if (!authCode) {
     return new Response("No code provided", { status: 400 });
@@ -31,17 +31,8 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
     sameSite: "lax", // 'lax' or 'strict'
   });
 
-  // If intent is to join competition, update user metadata
-  if (intent === "join_competition" && user) {
-    const { error: updateError } = await supabase.auth.updateUser({
-      data: { is_participant: true }
-    });
-    if (updateError) {
-      // Log error. The user will still be logged in, might see the WelcomeCompetitionPrompt as a fallback.
-      console.error("Failed to auto-set is_participant in callback:", updateError.message);
-    }
-    // User's session will be updated on the next request by the middleware (checkAndSetSession)
-  }
+  // NOTE: We intentionally do not auto-enroll users via callback. Joining the competition
+  // must be an explicit action taken on the dashboard (WelcomeCompetitionPrompt).
 
   // Create a new URL object for the /dashboard page
   const redirectUrl = new URL('/dashboard', url.origin);

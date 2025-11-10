@@ -34,18 +34,16 @@ const {
             name="name"><Icon name="material-symbols:person-rounded" slot="leading-icon" /></md-outlined-text-field>
         <md-outlined-text-field
             label="Universitas/Sekolah"
-            required
-            minlength="4"
             value={userSchool}
             name="school"><Icon name="material-symbols:school-rounded" slot="leading-icon" /></md-outlined-text-field>
+        <p class="helper">Optional — used to show your affiliation (not required).</p>
         <md-outlined-text-field
             label="Nomor Telefon"
-            required
-            minlength="8"
             type="tel"
             value={userPhone}
             name="phone"><Icon name="material-symbols:phone-in-talk-rounded" slot="leading-icon" />
         </md-outlined-text-field>
+        <p class="helper">Optional — used only to contact you if needed. We will not share this publicly.</p>
 
             <div class="gender row">
                 <div class="row">

@@ -6,22 +6,40 @@ import type { Provider } from "@supabase/supabase-js";
 export const POST: APIRoute = async ({ request, redirect }) => {
   const formData = await request.formData();
   const provider = formData.get("provider")?.toString();
-  const intent = formData.get("intent")?.toString(); // Add this
+  const intent = formData.get("intent")?.toString();
 
   if (provider) {
-    const baseCallbackUrl = import.meta.env.DEV
-      ? "http://localhost:4321/api/auth/callback"
-      : "https://faraidacademy.netlify.app/api/auth/callback";
+    // Derive the callback origin dynamically from the request where possible.
+    // This prevents a hardcoded production redirect domain (which caused users
+    // to be redirected to the Netlify site even when using a custom domain).
+    const originHeader = request.headers.get("origin") || request.headers.get("referer") || "";
+    let origin = "";
+    if (originHeader) {
+      try {
+        // If referer/origin contains a full URL, use its origin.
+        origin = new URL(originHeader).origin;
+      } catch (e) {
+        // Fallback: if header isn't a full URL, ignore and fallback below.
+        origin = "";
+      }
+    }
 
-    let redirectToUrl = baseCallbackUrl;
-    if (intent === "join_competition") { // Check intent
-      redirectToUrl += "?intent=join_competition"; // Append to URL
+    if (!origin) {
+      // Final fallback: use DEV or environment/site defaults.
+      origin = import.meta.env.DEV
+        ? "http://localhost:4321"
+        : (import.meta.env.SITE || "https://faraidacademy.netlify.app");
+    }
+
+    let redirectToUrl = `${origin}/api/auth/callback`;
+    if (intent === "join_competition") {
+      redirectToUrl += "?intent=join_competition";
     }
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: provider as Provider,
       options: {
-        redirectTo: redirectToUrl, // Use the potentially modified URL
+        redirectTo: redirectToUrl,
       },
     });
 
